@@ -54,7 +54,7 @@ RUNNER_COUNT=4
 
 for (( c=1; c<=$RUNNER_COUNT; c++ ))
 do
-    sudo cp /home/ubuntu/birdnetlib-aws-runner/runner.service /etc/systemd/system/runner_$c.service
+    sudo cp /home/ubuntu/audiospotter-aws-ec2/runner.service /etc/systemd/system/runner_$c.service
     sudo systemctl enable runner_$c
     sudo systemctl daemon-reload
     sudo systemctl start runner_$c
