@@ -50,7 +50,6 @@ crontab < cron.txt
 mkdir extractions
 
 # Start services
-RUNNER_COUNT=4
 
 for (( c=1; c<=$RUNNER_COUNT; c++ ))
 do
