@@ -1,0 +1,11 @@
+[Unit]
+Description=birdnetlib processing utility
+
+[Service]
+Restart=always
+User=ubuntu
+WorkingDirectory=/home/ubuntu/birdnetlib-aws-runner
+ExecStart=/home/ubuntu/.pyenv/versions/birdnetlib-env/bin/python runner.py
+
+[Install]
+WantedBy=multi-user.target

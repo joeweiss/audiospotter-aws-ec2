@@ -1,0 +1,1 @@
+0 */4 * * *  /usr/bin/curl -H tags:warning -H prio:high -d "t2.large still running" ntfy.sh/birdnetlib-instance &>/dev/null
