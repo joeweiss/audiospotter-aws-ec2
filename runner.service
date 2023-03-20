@@ -5,7 +5,7 @@ Description=birdnetlib processing utility
 Restart=always
 User=ubuntu
 WorkingDirectory=/home/ubuntu/audiospotter-aws-ec2
-ExecStart=/home/ubuntu/.pyenv/versions/birdnetlib-env/bin/python runner.py
+ExecStart=/home/ubuntu/.pyenv/versions/env/bin/python runner.py
 
 [Install]
 WantedBy=multi-user.target

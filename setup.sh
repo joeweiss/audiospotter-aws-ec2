@@ -34,7 +34,7 @@ pyenv global $PYTHON_VERSION
 python --version > /home/ubuntu/python_version.txt
 
 # Create environment
-VENV=birdnetlib-env
+VENV=env
 pyenv virtualenv $PYTHON_VERSION $VENV
 pyenv activate $VENV
 
