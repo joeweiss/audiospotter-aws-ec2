@@ -64,8 +64,11 @@ class Remote:
 
     def _return_queue_item(self):
         # TODO: Handle 404 and 500 with fibonacci backoff
-        response = requests.get(
-            f"{self.api_endpoint}/queues/audio/", headers=self.api_headers
+        server_id = self.processor_id
+        response = requests.post(
+            f"{self.api_endpoint}/queues/audio/",
+            data={"server_id": server_id},
+            headers=self.api_headers,
         )
         if response.status_code != 200:
             raise ConnectionError(

@@ -27,7 +27,7 @@ from .utils import (
 
 s3 = boto3.resource("s3")
 
-LIVE_TEST = True
+LIVE_TEST = False
 
 
 def test_queue():
@@ -41,7 +41,7 @@ def test_queue():
 
 def test_mocked_queue_request():
     # Test empty queue response.
-    with patch("remote.requests.get") as mocked_queue_response:
+    with patch("remote.requests.post") as mocked_queue_response:
         Response = namedtuple("Response", ["status_code", "json"])
         expected_queue_response = {}
         mocked_response = Response(
@@ -56,7 +56,7 @@ def test_mocked_queue_request():
 
     # Test non-200 response.
     # TODO: Handle timeouts and retries.
-    with patch("remote.requests.get") as mocked_queue_response:
+    with patch("remote.requests.post") as mocked_queue_response:
         Response = namedtuple("Response", ["status_code", "json"])
         expected_queue_response = {}
         mocked_response = Response(
@@ -72,7 +72,7 @@ def test_mocked_queue_request():
         assert str(e.value) == expected_error_text
 
     # Test queue item response.
-    with patch("remote.requests.get") as mocked_queue_response:
+    with patch("remote.requests.post") as mocked_queue_response:
         Response = namedtuple("Response", ["status_code", "json"])
         expected_queue_response = VALID_QUEUE_RESPONSE
         mocked_response = Response(
