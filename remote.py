@@ -69,6 +69,7 @@ class Remote:
             f"{self.api_endpoint}/queues/audio/",
             data={"server_id": server_id},
             headers=self.api_headers,
+            verify=False,
         )
         if response.status_code != 200:
             raise ConnectionError(
@@ -91,7 +92,9 @@ class Remote:
         data = self._format_results_for_api()
         audio_id = self.queued_audio_dict["id"]
         results_endpoint = f"{self.api_endpoint}/queues/audio/{audio_id}/results/"
-        response = requests.post(results_endpoint, json=data, headers=self.api_headers)
+        response = requests.post(
+            results_endpoint, json=data, headers=self.api_headers, verify=False
+        )
         if response.status_code != 201:
             raise ConnectionError(
                 f"Remote could not connect to API endpoint (status {response.status_code})."
@@ -279,7 +282,9 @@ class Remote:
             "analyzer_instance_id": self.instance_id,
             "number_of_runners": self.runner_count,
         }
-        response = requests.post(results_endpoint, json=data, headers=self.api_headers)
+        response = requests.post(
+            results_endpoint, json=data, headers=self.api_headers, verify=False
+        )
         print(response)
         os.system("sudo shutdown now -h")
 
