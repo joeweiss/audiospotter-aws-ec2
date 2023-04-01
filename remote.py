@@ -60,6 +60,8 @@ class Remote:
         return {
             "BNL_APIKEY": self.api_key,
             "BNL_PROCESSOR_ID": self.processor_id,
+            "APIKEY": self.api_key,
+            "PROCESSOR": self.processor_id,
         }
 
     def _return_queue_item(self):
@@ -69,7 +71,7 @@ class Remote:
             f"{self.api_endpoint}/queues/audio/",
             data={"server_id": server_id},
             headers=self.api_headers,
-            verify=False,
+            verify=self.verify_request,
         )
         if response.status_code != 200:
             raise ConnectionError(
@@ -93,7 +95,10 @@ class Remote:
         audio_id = self.queued_audio_dict["id"]
         results_endpoint = f"{self.api_endpoint}/queues/audio/{audio_id}/results/"
         response = requests.post(
-            results_endpoint, json=data, headers=self.api_headers, verify=False
+            results_endpoint,
+            json=data,
+            headers=self.api_headers,
+            verify=self.verify_request,
         )
         if response.status_code != 201:
             raise ConnectionError(
@@ -111,6 +116,10 @@ class Remote:
     @property
     def instance_type(self):
         return self.processor_type if self.processor_type else UNSPECIFIED
+
+    @property
+    def verify_request(self):
+        return not self.api_endpoint.startswith("http://")
 
     def _format_results_for_api(self):
         config_id = self.queued_audio_dict["project"]["analyzer_config"]["id"]
@@ -283,7 +292,10 @@ class Remote:
             "number_of_runners": self.runner_count,
         }
         response = requests.post(
-            results_endpoint, json=data, headers=self.api_headers, verify=False
+            results_endpoint,
+            json=data,
+            headers=self.api_headers,
+            verify=self.verify_request,
         )
         print(response)
         os.system("sudo shutdown now -h")

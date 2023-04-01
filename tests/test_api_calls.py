@@ -54,6 +54,18 @@ def test_mocked_queue_request():
         item = remote._return_queue_item()
         assert item == None
 
+    # Test endpoint verification for https.
+    remote = Remote(
+        api_endpoint="https://example.com", api_key=API_KEY, processor_id="local123"
+    )
+    assert remote.verify_request
+
+    # Test endpoint verification for http.
+    remote = Remote(
+        api_endpoint="http://example.com", api_key=API_KEY, processor_id="local123"
+    )
+    assert remote.verify_request == False
+
     # Test non-200 response.
     # TODO: Handle timeouts and retries.
     with patch("remote.requests.post") as mocked_queue_response:
