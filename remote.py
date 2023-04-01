@@ -60,16 +60,16 @@ class Remote:
         return {
             "BNL_APIKEY": self.api_key,
             "BNL_PROCESSOR_ID": self.processor_id,
-            "APIKEY": self.api_key,
-            "PROCESSOR": self.processor_id,
         }
 
     def _return_queue_item(self):
         # TODO: Handle 404 and 500 with fibonacci backoff
         server_id = self.processor_id
+        data = {"server_id": server_id}
+        data["api_key"] = self.api_key  # Add api_key to outgoing request
         response = requests.post(
             f"{self.api_endpoint}/queues/audio/",
-            data={"server_id": server_id},
+            json=data,
             headers=self.api_headers,
             verify=self.verify_request,
         )
@@ -92,6 +92,7 @@ class Remote:
     def _save_results_to_server(self):
         # TODO: Handle 404 and 500 with fibonacci backoff
         data = self._format_results_for_api()
+        data["api_key"] = self.api_key  # Add api_key to outgoing request
         audio_id = self.queued_audio_dict["id"]
         results_endpoint = f"{self.api_endpoint}/queues/audio/{audio_id}/results/"
         response = requests.post(
@@ -291,6 +292,7 @@ class Remote:
             "analyzer_instance_id": self.instance_id,
             "number_of_runners": self.runner_count,
         }
+        data["api_key"] = self.api_key  # Add api_key to outgoing request
         response = requests.post(
             results_endpoint,
             json=data,
