@@ -185,12 +185,12 @@ class Remote:
         data = self.queued_audio_dict
 
         analyzer_config = data["project"]["analyzer_config"]
-        min_conf = analyzer_config["config"].get("min_conf", None)
+        min_conf = analyzer_config["config"].get("minimum_detection_confidence", None)
         self.min_conf_audio_extraction = analyzer_config["config"].get(
-            "min_conf_audio_extraction", 0.0
+            "minimum_detection_clip_confidence", 0.0
         )
         self.min_conf_spectrogram_extraction = analyzer_config["config"].get(
-            "min_conf_spectrogram_extraction", 0.0
+            "minimum_detection_clip_confidence", 0.0
         )
 
         self.recording = Recording(

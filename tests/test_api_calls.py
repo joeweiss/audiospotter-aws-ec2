@@ -167,7 +167,7 @@ def test_mocked_downloads():
         "project": {
             "analyzer_config": {
                 "analyzer": {"id": 1, "name": "BirdNET-Analyzer"},
-                "config": {"min_conf": 0.6},
+                "config": {"minimum_detection_confidence": 0.6},
                 "id": 2,
             },
             "id": 1,
@@ -324,7 +324,7 @@ LIVE_QUEUE_RESPONSE = {
     "project": {
         "analyzer_config": {
             "analyzer": {"id": 1, "name": "BirdNET-Analyzer"},
-            "config": {"min_conf": 0.25},
+            "config": {"minimum_detection_confidence": 0.25},
             "id": 2,
         },
         "id": 1,
@@ -348,9 +348,8 @@ VALID_QUEUE_RESPONSE = {
         "analyzer_config": {
             "analyzer": {"id": 1, "name": "BirdNET-Analyzer"},
             "config": {
-                "min_conf": 0.25,
-                "min_conf_audio_extraction": 0.5,
-                "min_conf_spectrogram_extraction": 0.6,
+                "minimum_detection_confidence": 0.25,
+                "minimum_detection_clip_confidence": 0.5,
             },
             "id": 2,
             "extraction_audio_file_destination": {
