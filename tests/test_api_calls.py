@@ -280,6 +280,58 @@ def test_live_analyze():
     assert os.path.exists(remote.audio_filepath) == False
 
 
+def test_live_species_list_analyze():
+    if not LIVE_TEST:
+        return
+
+    # Test live file download.
+    remote = Remote(
+        api_endpoint=API_ENDPOINT,
+        api_key=API_KEY,
+        processor_id="local123",
+        aws_access_key_id=S3_ACCESS_KEY,
+        aws_secret_access_key=S3_SECRET_KEY,
+    )
+    remote.queued_audio_dict = VALID_QUEUE_SPECIES_LIST_RESPONSE.copy()
+    pprint(remote.queued_audio_dict)
+    remote._retrieve_file()
+    assert remote.audio_file_obj != None
+    assert remote.audio_filepath == "./soundscape.wav"
+
+    remote._analyze_file()
+
+    remote._extract_detections_as_audio()
+    remote._extract_detections_as_spectrogram()
+    remote._upload_extractions()
+    remote._upload_json()
+
+    pprint(remote.recording.detections)
+
+    remote._cleanup_files()
+
+    pprint(remote._format_results_for_api())
+
+    # Confirm custom species list from API is loaded.
+    assert remote.analyzer.custom_species_list == ["Haemorhous mexicanus_House Finch"]
+
+    results = remote._format_results_for_api()
+
+    assert results["file_checksum"] == "cfe5e3e09026b622f98c3572f82091f8"
+    assert len(results["detections"]) == 3
+
+    with patch("remote.requests.post") as mocked_queue_response:
+        Response = namedtuple("Response", ["status_code", "json"])
+        expected_queue_response = {"id": remote.queued_audio_dict["id"]}
+        mocked_response = Response(
+            status_code=201, json=lambda: expected_queue_response
+        )
+        mocked_queue_response.return_value = mocked_response
+        result = remote._save_results_to_server()
+        assert result is not None
+
+    assert os.path.exists(remote.audio_filepath) == False
+
+
 def test_live_process():
     if not LIVE_TEST:
         return
@@ -375,6 +427,53 @@ VALID_QUEUE_RESPONSE = {
                 "s3_region": "us-west-1",
                 "source_type": "S3",
             },
+        },
+        "id": 1,
+        "name": "Main Project",
+    },
+    "status": "in_progress",
+}
+
+
+VALID_QUEUE_SPECIES_LIST_RESPONSE = {
+    "file_path": "PROJECT_SLUG/GROUP/soundscape.wav",
+    "file_source": {
+        "id": 1,
+        "name": "Main Bucket",
+        "s3_bucket": "birdnet-lib-aws-runner-audio-storage",
+        "s3_region": "us-west-1",
+        "source_type": "S3",
+    },
+    "id": 3228,
+    "project": {
+        "analyzer_config": {
+            "analyzer": {"id": 1, "name": "BirdNET-Analyzer"},
+            "minimum_detection_confidence": 0.25,
+            "minimum_detection_clip_confidence": 0.5,
+            "config": {},
+            "id": 2,
+            "extraction_audio_file_destination": {
+                "id": 2,
+                "name": "Extraction Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "extraction_spectrogram_file_destination": {
+                "id": 2,
+                "name": "Extraction Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "analysis_json_file_destination": {
+                "id": 3,
+                "name": "Data Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-data-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "species_list": ["Haemorhous mexicanus_House Finch"],
         },
         "id": 1,
         "name": "Main Project",

@@ -41,8 +41,6 @@ class Remote:
         self.extraction_spectrogram_directory = extraction_spectrogram_directory
         self.audio_file_obj = None
         self.audio_filepath = None
-        if not analyzer:
-            analyzer = Analyzer()
         self.analyzer = analyzer
         self.recording = None
         self._client = None
@@ -181,6 +179,21 @@ class Remote:
             open(self.audio_filepath, "rb").read()
         ).hexdigest()
 
+    def _create_analyzer(self):
+        # Currently, only Birdnet-Analyzer is supported.
+        # TODO: Add additional analyzers.
+
+        data = self.queued_audio_dict
+        analyzer_config = data["project"]["analyzer_config"]
+
+        species_list = analyzer_config.get("species_list", [])
+
+        if len(species_list) != 0:
+            analyzer = Analyzer(custom_species_list=species_list)
+        else:
+            analyzer = Analyzer()
+        self.analyzer = analyzer
+
     def _analyze_file(self):
         data = self.queued_audio_dict
 
@@ -192,6 +205,10 @@ class Remote:
         self.min_conf_spectrogram_extraction = analyzer_config.get(
             "minimum_detection_clip_confidence", 0.0
         )
+
+        # Create analyzer if it doesn't already exist.
+        if not self.analyzer:
+            self._create_analyzer()
 
         self.recording = Recording(
             self.analyzer,
