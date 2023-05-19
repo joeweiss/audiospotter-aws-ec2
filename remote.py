@@ -8,6 +8,8 @@ from birdnetlib.analyzer import Analyzer
 import json
 import hashlib
 import time
+from urllib.parse import urlparse
+
 
 UNSPECIFIED = "Not specified"
 
@@ -188,10 +190,47 @@ class Remote:
 
         species_list = analyzer_config.get("species_list", [])
 
+        analyzer_kwargs = {}
+
         if len(species_list) != 0:
-            analyzer = Analyzer(custom_species_list=species_list)
-        else:
-            analyzer = Analyzer()
+            analyzer_kwargs["custom_species_list"] = species_list
+
+        # Handle custom models (which may be passed from the api)
+        custom_model_file = analyzer_config["analyzer"].get("model_fp32_file", None)
+        custom_labels_file = analyzer_config["analyzer"].get("labels_file", None)
+
+        if custom_model_file:
+            # Check to see if the file already exists.
+            api_server_root = (
+                urlparse(self.api_endpoint).scheme
+                + "://"
+                + urlparse(self.api_endpoint).hostname
+            )
+
+            model_filename = os.path.basename(custom_model_file)
+            model_filepath = os.path.join(self.audio_directory, model_filename)
+
+            if not os.path.exists(model_filepath):
+                # Download the model file.
+                url = f"{api_server_root}{custom_model_file}"
+                r = requests.get(url)
+                with open(model_filepath, "wb") as f:
+                    f.write(r.content)
+
+            labels_filename = os.path.basename(custom_labels_file)
+            labels_filepath = os.path.join(self.audio_directory, labels_filename)
+
+            if not os.path.exists(labels_filepath):
+                # Download the labels file.
+                url = f"{api_server_root}{custom_labels_file}"
+                r = requests.get(url)
+                with open(labels_filepath, "wb") as f:
+                    f.write(r.content)
+
+            analyzer_kwargs["classifier_model_path"] = model_filepath
+            analyzer_kwargs["classifier_labels_path"] = labels_filepath
+
+        analyzer = Analyzer(**analyzer_kwargs)
         self.analyzer = analyzer
 
     def _analyze_file(self):

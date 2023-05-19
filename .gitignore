@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 
 .autoenv
+
+BirdNET_GLOBAL_3K*
