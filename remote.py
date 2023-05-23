@@ -123,7 +123,7 @@ class Remote:
         return not self.api_endpoint.startswith("http://")
 
     def _format_results_for_api(self):
-        config_id = self.queued_audio_dict["project"]["analyzer_config"]["id"]
+        config_id = self.queued_audio_dict["group"]["analyzer_config"]["id"]
         data = {
             "detections": self.detections,
             "config_id": config_id,
@@ -147,7 +147,7 @@ class Remote:
 
     def _retrieve_file(self):
         # Get the file.
-        data = self.queued_audio_dict
+        data = self.queued_audio_dict["audio"]
         filename = os.path.basename(data["file_path"])
         self.audio_filepath = os.path.join(self.audio_directory, filename)
         bucket = data["file_source"]["s3_bucket"]
@@ -186,7 +186,7 @@ class Remote:
         # TODO: Add additional analyzers.
 
         data = self.queued_audio_dict
-        analyzer_config = data["project"]["analyzer_config"]
+        analyzer_config = data["group"]["analyzer_config"]
 
         species_list = analyzer_config.get("species_list", [])
 
@@ -236,7 +236,7 @@ class Remote:
     def _analyze_file(self):
         data = self.queued_audio_dict
 
-        analyzer_config = data["project"]["analyzer_config"]
+        analyzer_config = data["group"]["analyzer_config"]
         min_conf = analyzer_config.get("minimum_detection_confidence", None)
         self.min_conf_audio_extraction = analyzer_config.get(
             "minimum_detection_clip_confidence", 0.0
@@ -278,17 +278,17 @@ class Remote:
         print("_upload_extractions")
         self.detections = self.recording.detections.copy()
 
-        audio_bucket = self.queued_audio_dict["project"]["analyzer_config"][
+        audio_bucket = self.queued_audio_dict["group"]["analyzer_config"][
             "extraction_audio_file_destination"
         ]["s3_bucket"]
 
-        spectro_bucket = self.queued_audio_dict["project"]["analyzer_config"][
+        spectro_bucket = self.queued_audio_dict["group"]["analyzer_config"][
             "extraction_spectrogram_file_destination"
         ]["s3_bucket"]
 
         _uploaded_extractions = {}
         for detection in self.detections:
-            source_file_path = self.queued_audio_dict["file_path"]
+            source_file_path = self.queued_audio_dict["audio"]["file_path"]
             source_file_dir = os.path.dirname(source_file_path)
             if "extracted_audio_path" in detection:
                 extract_file_name = os.path.basename(detection["extracted_audio_path"])
@@ -319,12 +319,12 @@ class Remote:
     def _upload_json(self):
         # Includes config (algo, min_conf, etc) and extractions
         data = self._format_results_for_api()
-        analyzer_config = self.queued_audio_dict["project"]["analyzer_config"]
+        analyzer_config = self.queued_audio_dict["group"]["analyzer_config"]
         data["analyzer_config"] = analyzer_config
-        bucket = self.queued_audio_dict["project"]["analyzer_config"][
+        bucket = self.queued_audio_dict["group"]["analyzer_config"][
             "analysis_json_file_destination"
         ]["s3_bucket"]
-        source_file_path = self.queued_audio_dict["file_path"]
+        source_file_path = self.queued_audio_dict["audio"]["file_path"]
         key = f"{source_file_path}_data.json"
         body = json.dumps(data)
         self.client.put_object(Body=body, Bucket=bucket, Key=key)

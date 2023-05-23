@@ -86,7 +86,7 @@ def test_mocked_queue_request():
     # Test queue item response.
     with patch("remote.requests.post") as mocked_queue_response:
         Response = namedtuple("Response", ["status_code", "json"])
-        expected_queue_response = VALID_QUEUE_RESPONSE
+        expected_queue_response = dict(VALID_QUEUE_RESPONSE)
         mocked_response = Response(
             status_code=200, json=lambda: expected_queue_response
         )
@@ -95,7 +95,8 @@ def test_mocked_queue_request():
             api_endpoint=API_ENDPOINT, api_key=API_KEY, processor_id="local123"
         )
         item = remote._return_queue_item()
-        assert "file_path" in item
+        assert "audio" in item
+        assert "file_path" in item["audio"]
 
 
 def test_live_download():
@@ -110,7 +111,7 @@ def test_live_download():
         aws_access_key_id=S3_ACCESS_KEY,
         aws_secret_access_key=S3_SECRET_KEY,
     )
-    remote.queued_audio_dict = VALID_QUEUE_RESPONSE.copy()
+    remote.queued_audio_dict = dict(VALID_QUEUE_RESPONSE)
     remote._retrieve_file()
     assert remote.audio_file_obj != None
     assert remote.audio_filepath == "./soundscape.wav"
@@ -118,9 +119,11 @@ def test_live_download():
     assert os.path.exists(remote.audio_filepath) == False
 
     # Handle missing file (404 from S3)
-    remote.queued_audio_dict["file_path"] = (
-        remote.queued_audio_dict["file_path"] + ".nothere"
+    error_audio_dict = dict(remote.queued_audio_dict)
+    error_audio_dict["audio"]["file_path"] = (
+        remote.queued_audio_dict["audio"]["file_path"] + ".nothere"
     )
+    remote.queued_audio_dict = error_audio_dict
     expected_error_text = (
         "Remote could not find audio file on S3 "
         + "(error: An error occurred (404) when calling the HeadObject operation: Not Found)."
@@ -133,7 +136,7 @@ def test_live_download():
     assert os.path.exists(remote.audio_filepath) == False
 
     # Handle credential error (403 from S3)
-    remote.queued_audio_dict = VALID_QUEUE_RESPONSE.copy()  # Reset valid audio dict.
+    remote.queued_audio_dict = dict(VALID_QUEUE_RESPONSE)  # Reset valid audio dict.
     # Reset remote with non-valid credentials.
     remote._client = None
     remote.aws_access_key_id = remote.aws_access_key_id + "Z"
@@ -160,11 +163,13 @@ def test_mocked_downloads():
     )
     # Fake the queue return.
     queued_audio_dict = {
-        "file_path": key,
-        "file_source": {
-            "s3_bucket": bucket_name,
+        "audio": {
+            "file_path": key,
+            "file_source": {
+                "s3_bucket": bucket_name,
+            },
         },
-        "project": {
+        "group": {
             "analyzer_config": {
                 "analyzer": {"id": 1, "name": "BirdNET-Analyzer"},
                 "minimum_detection_confidence": 0.6,
@@ -172,7 +177,7 @@ def test_mocked_downloads():
                 "id": 2,
             },
             "id": 1,
-            "name": "Main Project",
+            "name": "Main Group",
         },
     }
 
@@ -185,7 +190,7 @@ def test_mocked_downloads():
         aws_secret_access_key=S3_SECRET_KEY,
     )
     remote._client = mocked_s3_client
-    remote.queued_audio_dict = queued_audio_dict.copy()
+    remote.queued_audio_dict = dict(queued_audio_dict)
     remote._retrieve_file()  # This is a real file now, let's analyze it.
     remote._analyze_file()
     assert len(remote.recording.detections) == 2
@@ -211,10 +216,12 @@ def test_mocked_s3_error_download():
     )
     remote._client = mocked_s3_client
     remote.queued_audio_dict = {
-        "file_path": "PROJECT/GROUP/file.flac",
-        "file_source": {
-            "s3_bucket": "non-existant-bucket",
-        },
+        "audio": {
+            "file_path": "PROJECT/GROUP/file.flac",
+            "file_source": {
+                "s3_bucket": "non-existant-bucket",
+            },
+        }
     }
 
     expected_error_text = (
@@ -243,7 +250,7 @@ def test_live_analyze():
         aws_access_key_id=S3_ACCESS_KEY,
         aws_secret_access_key=S3_SECRET_KEY,
     )
-    remote.queued_audio_dict = VALID_QUEUE_RESPONSE.copy()
+    remote.queued_audio_dict = dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE)
     pprint(remote.queued_audio_dict)
     remote._retrieve_file()
     assert remote.audio_file_obj != None
@@ -292,7 +299,7 @@ def test_live_species_list_analyze():
         aws_access_key_id=S3_ACCESS_KEY,
         aws_secret_access_key=S3_SECRET_KEY,
     )
-    remote.queued_audio_dict = VALID_QUEUE_SPECIES_LIST_RESPONSE.copy()
+    remote.queued_audio_dict = dict(VALID_QUEUE_SPECIES_LIST_RESPONSE)
     pprint(remote.queued_audio_dict)
     remote._retrieve_file()
     assert remote.audio_file_obj != None
@@ -312,6 +319,7 @@ def test_live_species_list_analyze():
     pprint(remote._format_results_for_api())
 
     # Confirm custom species list from API is loaded.
+    # print(remote.analyzer.custom_species_list)
     assert remote.analyzer.custom_species_list == ["Haemorhous mexicanus_House Finch"]
 
     results = remote._format_results_for_api()
@@ -342,7 +350,7 @@ def test_live_process():
     ) as mocked_post_response:
         # Get response
         Response = namedtuple("Response", ["status_code", "json"])
-        expected_queue_response = VALID_QUEUE_RESPONSE.copy()
+        expected_queue_response = dict(VALID_QUEUE_RESPONSE)
         mocked_queue_response.return_value = Response(
             status_code=200, json=lambda: expected_queue_response
         )
@@ -379,7 +387,7 @@ def test_live_analyze_custom_classifier():
         aws_access_key_id=S3_ACCESS_KEY,
         aws_secret_access_key=S3_SECRET_KEY,
     )
-    remote.queued_audio_dict = VALID_QUEUE_CUSTOM_CLASSIFIERS_RESPONSE.copy()
+    remote.queued_audio_dict = dict(VALID_QUEUE_CUSTOM_CLASSIFIERS_RESPONSE)
     pprint(remote.queued_audio_dict)
     remote._retrieve_file()
     assert remote.audio_file_obj != None
@@ -417,134 +425,10 @@ def test_live_analyze_custom_classifier():
 
 
 LIVE_QUEUE_RESPONSE = {
-    "file_path": "OLY/OLY_41083/Stn_4/OLY_41083-4_20210824_100000.flac",
-    "file_source": {
-        "id": 1,
-        "name": "Main Bucket",
-        "s3_bucket": "birdpop-audio-raw-storage",
-        "s3_region": "us-west-1",
-        "source_type": "S3",
-    },
     "id": 3228,
-    "project": {
-        "analyzer_config": {
-            "analyzer": {"id": 1, "name": "BirdNET-Analyzer"},
-            "minimum_detection_confidence": 0.25,
-            "minimum_detection_clip_confidence": 0.5,
-            "config": {},
-            "id": 2,
-        },
-        "id": 1,
-        "name": "Main Project",
-    },
     "status": "in_progress",
-}
-
-
-VALID_QUEUE_RESPONSE = {
-    "file_path": "PROJECT_SLUG/GROUP/soundscape.wav",
-    "file_source": {
-        "id": 1,
-        "name": "Main Bucket",
-        "s3_bucket": "birdnet-lib-aws-runner-audio-storage",
-        "s3_region": "us-west-1",
-        "source_type": "S3",
-    },
-    "id": 3228,
-    "project": {
-        "analyzer_config": {
-            "analyzer": {"id": 1, "name": "BirdNET-Analyzer"},
-            "minimum_detection_confidence": 0.25,
-            "minimum_detection_clip_confidence": 0.5,
-            "config": {},
-            "id": 2,
-            "extraction_audio_file_destination": {
-                "id": 2,
-                "name": "Extraction Bucket",
-                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
-                "s3_region": "us-west-1",
-                "source_type": "S3",
-            },
-            "extraction_spectrogram_file_destination": {
-                "id": 2,
-                "name": "Extraction Bucket",
-                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
-                "s3_region": "us-west-1",
-                "source_type": "S3",
-            },
-            "analysis_json_file_destination": {
-                "id": 3,
-                "name": "Data Bucket",
-                "s3_bucket": "birdnet-lib-aws-runner-data-storage",
-                "s3_region": "us-west-1",
-                "source_type": "S3",
-            },
-        },
-        "id": 1,
-        "name": "Main Project",
-    },
-    "status": "in_progress",
-}
-
-
-VALID_QUEUE_SPECIES_LIST_RESPONSE = {
-    "file_path": "PROJECT_SLUG/GROUP/soundscape.wav",
-    "file_source": {
-        "id": 1,
-        "name": "Main Bucket",
-        "s3_bucket": "birdnet-lib-aws-runner-audio-storage",
-        "s3_region": "us-west-1",
-        "source_type": "S3",
-    },
-    "id": 3228,
-    "project": {
-        "analyzer_config": {
-            "analyzer": {"id": 1, "name": "BirdNET-Analyzer"},
-            "minimum_detection_confidence": 0.25,
-            "minimum_detection_clip_confidence": 0.5,
-            "config": {},
-            "id": 2,
-            "extraction_audio_file_destination": {
-                "id": 2,
-                "name": "Extraction Bucket",
-                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
-                "s3_region": "us-west-1",
-                "source_type": "S3",
-            },
-            "extraction_spectrogram_file_destination": {
-                "id": 2,
-                "name": "Extraction Bucket",
-                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
-                "s3_region": "us-west-1",
-                "source_type": "S3",
-            },
-            "analysis_json_file_destination": {
-                "id": 3,
-                "name": "Data Bucket",
-                "s3_bucket": "birdnet-lib-aws-runner-data-storage",
-                "s3_region": "us-west-1",
-                "source_type": "S3",
-            },
-            "species_list": ["Haemorhous mexicanus_House Finch"],
-        },
-        "id": 1,
-        "name": "Main Project",
-    },
-    "status": "in_progress",
-}
-
-
-VALID_QUEUE_CUSTOM_CLASSIFIERS_RESPONSE = {
-    "file_path": "PROJECT_SLUG/GROUP/soundscape.wav",
-    "file_source": {
-        "id": 1,
-        "name": "Main Bucket",
-        "s3_bucket": "birdnet-lib-aws-runner-audio-storage",
-        "s3_region": "us-west-1",
-        "source_type": "S3",
-    },
-    "id": 3228,
-    "project": {
+    "group": {
+        "id": 3228,
         "analyzer_config": {
             "analyzer": {
                 "id": 1,
@@ -579,8 +463,238 @@ VALID_QUEUE_CUSTOM_CLASSIFIERS_RESPONSE = {
                 "source_type": "S3",
             },
         },
-        "id": 1,
-        "name": "Main Project",
+        "name": "Main Group",
     },
+    "audio": {
+        "file_path": "OLY/OLY_41083/Stn_4/OLY_41083-4_20210824_100000.flac",
+        "file_source": {
+            "id": 1,
+            "name": "Main Bucket",
+            "s3_bucket": "birdpop-audio-raw-storage",
+            "s3_region": "us-west-1",
+            "source_type": "S3",
+        },
+        "id": 3228,
+    },
+}
+
+
+VALID_QUEUE_RESPONSE = {
+    "id": 3228,
     "status": "in_progress",
+    "group": {
+        "id": 3228,
+        "analyzer_config": {
+            "analyzer": {
+                "id": 1,
+                "name": "BirdNET-Analyzer",
+                "model_fp32_file": "/media/BirdNET_GLOBAL_3K_V2.3_Model_FP32.tflite",
+                "model_fp16_file": "/media/BirdNET_GLOBAL_3K_V2.3_MData_Model_FP16.tflite",
+                "labels_file": "/media/BirdNET_GLOBAL_3K_V2.3_Labels_0eHo4Cy.txt",
+            },
+            "minimum_detection_confidence": 0.25,
+            "minimum_detection_clip_confidence": 0.5,
+            "config": {},
+            "id": 2,
+            "extraction_audio_file_destination": {
+                "id": 2,
+                "name": "Extraction Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "extraction_spectrogram_file_destination": {
+                "id": 2,
+                "name": "Extraction Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "analysis_json_file_destination": {
+                "id": 3,
+                "name": "Data Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-data-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+        },
+        "name": "Main Group",
+    },
+    "audio": {
+        "file_path": "PROJECT_SLUG/GROUP/soundscape.wav",
+        "file_source": {
+            "id": 1,
+            "name": "Main Bucket",
+            "s3_bucket": "birdnet-lib-aws-runner-audio-storage",
+            "s3_region": "us-west-1",
+            "source_type": "S3",
+        },
+        "id": 3228,
+    },
+}
+
+
+VALID_QUEUE_RESPONSE_LIVE_ANALYZE = {
+    "id": 3228,
+    "status": "in_progress",
+    "group": {
+        "id": 3228,
+        "analyzer_config": {
+            "analyzer": {
+                "id": 1,
+                "name": "BirdNET-Analyzer",
+                "model_fp32_file": "/media/BirdNET_GLOBAL_3K_V2.3_Model_FP32.tflite",
+                "model_fp16_file": "/media/BirdNET_GLOBAL_3K_V2.3_MData_Model_FP16.tflite",
+                "labels_file": "/media/BirdNET_GLOBAL_3K_V2.3_Labels_0eHo4Cy.txt",
+            },
+            "minimum_detection_confidence": 0.25,
+            "minimum_detection_clip_confidence": 0.5,
+            "config": {},
+            "id": 2,
+            "extraction_audio_file_destination": {
+                "id": 2,
+                "name": "Extraction Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "extraction_spectrogram_file_destination": {
+                "id": 2,
+                "name": "Extraction Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "analysis_json_file_destination": {
+                "id": 3,
+                "name": "Data Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-data-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+        },
+        "name": "Main Group",
+    },
+    "audio": {
+        "file_path": "PROJECT_SLUG/GROUP/soundscape.wav",
+        "file_source": {
+            "id": 1,
+            "name": "Main Bucket",
+            "s3_bucket": "birdnet-lib-aws-runner-audio-storage",
+            "s3_region": "us-west-1",
+            "source_type": "S3",
+        },
+        "id": 3228,
+    },
+}
+
+
+VALID_QUEUE_SPECIES_LIST_RESPONSE = {
+    "id": 3228,
+    "status": "in_progress",
+    "group": {
+        "id": 3228,
+        "analyzer_config": {
+            "analyzer": {
+                "id": 1,
+                "name": "BirdNET-Analyzer",
+                "model_fp32_file": "/media/BirdNET_GLOBAL_3K_V2.3_Model_FP32.tflite",
+                "model_fp16_file": "/media/BirdNET_GLOBAL_3K_V2.3_MData_Model_FP16.tflite",
+                "labels_file": "/media/BirdNET_GLOBAL_3K_V2.3_Labels_0eHo4Cy.txt",
+            },
+            "minimum_detection_confidence": 0.25,
+            "minimum_detection_clip_confidence": 0.5,
+            "config": {},
+            "id": 2,
+            "extraction_audio_file_destination": {
+                "id": 2,
+                "name": "Extraction Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "extraction_spectrogram_file_destination": {
+                "id": 2,
+                "name": "Extraction Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "analysis_json_file_destination": {
+                "id": 3,
+                "name": "Data Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-data-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "species_list": ["Haemorhous mexicanus_House Finch"],
+        },
+        "name": "Main Group",
+    },
+    "audio": {
+        "file_path": "PROJECT_SLUG/GROUP/soundscape.wav",
+        "file_source": {
+            "id": 1,
+            "name": "Main Bucket",
+            "s3_bucket": "birdnet-lib-aws-runner-audio-storage",
+            "s3_region": "us-west-1",
+            "source_type": "S3",
+        },
+        "id": 3228,
+    },
+}
+
+
+VALID_QUEUE_CUSTOM_CLASSIFIERS_RESPONSE = {
+    "id": 3228,
+    "status": "in_progress",
+    "group": {
+        "id": 3228,
+        "analyzer_config": {
+            "analyzer": {
+                "id": 1,
+                "name": "BirdNET-Analyzer",
+                "model_fp32_file": "/media/BirdNET_GLOBAL_3K_V2.3_Model_FP32.tflite",
+                "model_fp16_file": "/media/BirdNET_GLOBAL_3K_V2.3_MData_Model_FP16.tflite",
+                "labels_file": "/media/BirdNET_GLOBAL_3K_V2.3_Labels_0eHo4Cy.txt",
+            },
+            "minimum_detection_confidence": 0.25,
+            "minimum_detection_clip_confidence": 0.5,
+            "config": {},
+            "id": 2,
+            "extraction_audio_file_destination": {
+                "id": 2,
+                "name": "Extraction Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "extraction_spectrogram_file_destination": {
+                "id": 2,
+                "name": "Extraction Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-extraction-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+            "analysis_json_file_destination": {
+                "id": 3,
+                "name": "Data Bucket",
+                "s3_bucket": "birdnet-lib-aws-runner-data-storage",
+                "s3_region": "us-west-1",
+                "source_type": "S3",
+            },
+        },
+        "name": "Main Group",
+    },
+    "audio": {
+        "file_path": "PROJECT_SLUG/GROUP/soundscape.wav",
+        "file_source": {
+            "id": 1,
+            "name": "Main Bucket",
+            "s3_bucket": "birdnet-lib-aws-runner-audio-storage",
+            "s3_region": "us-west-1",
+            "source_type": "S3",
+        },
+        "id": 3228,
+    },
 }
