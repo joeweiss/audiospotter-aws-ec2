@@ -57,7 +57,7 @@ do
     sudo systemctl enable runner_$c
     sudo systemctl daemon-reload
     sudo systemctl start runner_$c
-    # Stagger startup to prevent overwhelming the memory with simultaneour audioreads.
+    # Stagger startup to prevent overwhelming the memory with simultaneous audioreads.
     sleep 15
 done
 
