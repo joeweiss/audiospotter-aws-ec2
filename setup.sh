@@ -57,6 +57,8 @@ do
     sudo systemctl enable runner_$c
     sudo systemctl daemon-reload
     sudo systemctl start runner_$c
+    # Stagger startup to prevent overwhelming the memory with simultaneour audioreads.
+    sleep 15
 done
 
 # To follow along, do this: sudo journalctl -u runner_1 -f
