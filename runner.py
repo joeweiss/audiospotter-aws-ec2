@@ -22,6 +22,7 @@ INSTANCE_ID = response.text
 
 SLEEP_AFTER_EMPTY_QUEUE_SECONDS = 30
 
+PID = os.getpid()
 
 def main():
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -30,6 +31,7 @@ def main():
             api_key=API_KEY,
             aws_access_key_id=S3_ACCESS_KEY,
             aws_secret_access_key=S3_SECRET_KEY,
+            pid=PID,
             processor_id=INSTANCE_ID,
             processor_type=INSTANCE_TYPE,
             audio_directory=temp_dir,

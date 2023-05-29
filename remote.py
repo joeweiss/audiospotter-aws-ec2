@@ -19,6 +19,7 @@ class Remote:
         self,
         api_endpoint="",
         api_key="",
+        pid=None,
         processor_id=None,
         processor_type=None,
         aws_access_key_id="",
@@ -33,6 +34,7 @@ class Remote:
     ):
         self.api_endpoint = api_endpoint
         self.api_key = api_key
+        self.pid = pid
         self.processor_id = processor_id
         self.processor_type = processor_type
         self.aws_access_key_id = aws_access_key_id
@@ -65,7 +67,8 @@ class Remote:
     def _return_queue_item(self):
         # TODO: Handle 404 and 500 with fibonacci backoff
         server_id = self.processor_id
-        data = {"server_id": server_id}
+        pid = self.pid
+        data = {"server_id": server_id, "pid": pid}
         data["api_key"] = self.api_key  # Add api_key to outgoing request
         response = requests.post(
             f"{self.api_endpoint}/queues/audio/",
