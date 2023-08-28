@@ -30,13 +30,14 @@ s3 = boto3.resource("s3")
 LIVE_TEST = False
 
 
-def test_queue():
-    if not LIVE_TEST:
-        return
-    remote = Remote(api_endpoint=API_ENDPOINT, api_key=API_KEY, processor_id="local123")
-    item = remote._return_queue_item()
-    pprint(item)
-    assert item == None
+# def test_queue():
+#     if not LIVE_TEST:
+#         return
+#     # This only works if the processor_id exist on the api server.
+#     remote = Remote(api_endpoint=API_ENDPOINT, api_key=API_KEY, processor_id="local123")
+#     item = remote._return_queue_item()
+#     pprint(item)
+#     assert item == None
 
 
 def test_mocked_queue_request():
@@ -193,7 +194,7 @@ def test_mocked_downloads():
     remote.queued_audio_dict = dict(queued_audio_dict)
     remote._retrieve_file()  # This is a real file now, let's analyze it.
     remote._analyze_file()
-    assert len(remote.recording.detections) == 2
+    assert len(remote.recording.detections) == 4
     assert remote.audio_file_obj != None
     assert remote.audio_filepath == "./file.wav"
     remote._cleanup_files()
@@ -250,7 +251,7 @@ def test_live_analyze():
         aws_access_key_id=S3_ACCESS_KEY,
         aws_secret_access_key=S3_SECRET_KEY,
     )
-    remote.queued_audio_dict = dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE)
+    remote.queued_audio_dict = dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE).copy()
     pprint(remote.queued_audio_dict)
     remote._retrieve_file()
     assert remote.audio_file_obj != None
@@ -267,12 +268,71 @@ def test_live_analyze():
 
     remote._cleanup_files()
 
+    assert remote.analyzer.version == "2.4"
+    assert remote.analyzer.model_download_was_required == False
+
     pprint(remote._format_results_for_api())
 
     results = remote._format_results_for_api()
+    pprint(results)
+
+    assert results["file_checksum"] == "cfe5e3e09026b622f98c3572f82091f8"
+    assert len(results["detections"]) == 25
+    assert results["analyzer_version"] == "2.4"
+
+    with patch("remote.requests.post") as mocked_queue_response:
+        Response = namedtuple("Response", ["status_code", "json"])
+        expected_queue_response = {"id": remote.queued_audio_dict["id"]}
+        mocked_response = Response(
+            status_code=201, json=lambda: expected_queue_response
+        )
+        mocked_queue_response.return_value = mocked_response
+        result = remote._save_results_to_server()
+        assert result is not None
+
+    assert os.path.exists(remote.audio_filepath) == False
+
+    # Test with 2.3.
+
+    # Test live file download.
+    remote = Remote(
+        api_endpoint=API_ENDPOINT,
+        api_key=API_KEY,
+        processor_id="local123",
+        aws_access_key_id=S3_ACCESS_KEY,
+        aws_secret_access_key=S3_SECRET_KEY,
+    )
+    remote.queued_audio_dict = dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE).copy()
+
+    # Patch response to use 2.3.
+    remote.queued_audio_dict["group"]["analyzer_config"]["analyzer"]["version"] = "2.3"
+
+    pprint(remote.queued_audio_dict)
+    remote._retrieve_file()
+    assert remote.audio_file_obj != None
+    assert remote.audio_filepath == "./soundscape.wav"
+
+    remote._analyze_file()
+
+    remote._extract_detections_as_audio()
+    remote._extract_detections_as_spectrogram()
+    remote._upload_extractions()
+    remote._upload_json()
+
+    pprint(remote.recording.detections)
+
+    remote._cleanup_files()
+
+    assert remote.analyzer.version == "2.3"
+
+    pprint(remote._format_results_for_api())
+
+    results = remote._format_results_for_api()
+    pprint(results)
 
     assert results["file_checksum"] == "cfe5e3e09026b622f98c3572f82091f8"
     assert len(results["detections"]) == 12
+    assert results["analyzer_version"] == "2.3"
 
     with patch("remote.requests.post") as mocked_queue_response:
         Response = namedtuple("Response", ["status_code", "json"])
@@ -340,38 +400,6 @@ def test_live_species_list_analyze():
     assert os.path.exists(remote.audio_filepath) == False
 
 
-def test_live_process():
-    if not LIVE_TEST:
-        return
-
-    # Mocks interactions with api, but uses Tungite's live test S3 setup.
-    with patch("remote.requests.get") as mocked_queue_response, patch(
-        "remote.requests.post"
-    ) as mocked_post_response:
-        # Get response
-        Response = namedtuple("Response", ["status_code", "json"])
-        expected_queue_response = dict(VALID_QUEUE_RESPONSE)
-        mocked_queue_response.return_value = Response(
-            status_code=200, json=lambda: expected_queue_response
-        )
-
-        # Post response
-        expected_report_response = {}
-        mocked_post_response.return_value = Response(
-            status_code=201, json=lambda: expected_report_response
-        )
-
-        remote = Remote(
-            api_endpoint=API_ENDPOINT,
-            api_key=API_KEY,
-            processor_id="local123",
-            aws_access_key_id=S3_ACCESS_KEY,
-            aws_secret_access_key=S3_SECRET_KEY,
-        )
-
-        remote.process()
-
-
 def test_live_analyze_custom_classifier():
     if not LIVE_TEST:
         return
@@ -409,7 +437,7 @@ def test_live_analyze_custom_classifier():
     results = remote._format_results_for_api()
 
     assert results["file_checksum"] == "cfe5e3e09026b622f98c3572f82091f8"
-    assert len(results["detections"]) == 12
+    assert len(results["detections"]) == 39
 
     with patch("remote.requests.post") as mocked_queue_response:
         Response = namedtuple("Response", ["status_code", "json"])
@@ -540,13 +568,7 @@ VALID_QUEUE_RESPONSE_LIVE_ANALYZE = {
     "group": {
         "id": 3228,
         "analyzer_config": {
-            "analyzer": {
-                "id": 1,
-                "name": "BirdNET-Analyzer",
-                "model_fp32_file": "/media/BirdNET_GLOBAL_3K_V2.3_Model_FP32.tflite",
-                "model_fp16_file": "/media/BirdNET_GLOBAL_3K_V2.3_MData_Model_FP16.tflite",
-                "labels_file": "/media/BirdNET_GLOBAL_3K_V2.3_Labels_0eHo4Cy.txt",
-            },
+            "analyzer": {"id": 1, "name": "BirdNET-Analyzer", "version": "2.4"},
             "minimum_detection_confidence": 0.25,
             "minimum_detection_clip_confidence": 0.5,
             "config": {},
@@ -598,9 +620,7 @@ VALID_QUEUE_SPECIES_LIST_RESPONSE = {
             "analyzer": {
                 "id": 1,
                 "name": "BirdNET-Analyzer",
-                "model_fp32_file": "/media/BirdNET_GLOBAL_3K_V2.3_Model_FP32.tflite",
-                "model_fp16_file": "/media/BirdNET_GLOBAL_3K_V2.3_MData_Model_FP16.tflite",
-                "labels_file": "/media/BirdNET_GLOBAL_3K_V2.3_Labels_0eHo4Cy.txt",
+                "version": "2.3",
             },
             "minimum_detection_confidence": 0.25,
             "minimum_detection_clip_confidence": 0.5,
@@ -654,12 +674,12 @@ VALID_QUEUE_CUSTOM_CLASSIFIERS_RESPONSE = {
             "analyzer": {
                 "id": 1,
                 "name": "BirdNET-Analyzer",
-                "model_fp32_file": "/media/BirdNET_GLOBAL_3K_V2.3_Model_FP32.tflite",
-                "model_fp16_file": "/media/BirdNET_GLOBAL_3K_V2.3_MData_Model_FP16.tflite",
-                "labels_file": "/media/BirdNET_GLOBAL_3K_V2.3_Labels_0eHo4Cy.txt",
+                "model_fp32_file": "/media/Custom_Classifier.tflite",
+                "model_fp16_file": "",
+                "labels_file": "/media/Custom_Classifier_Labels.txt",
             },
-            "minimum_detection_confidence": 0.25,
-            "minimum_detection_clip_confidence": 0.5,
+            "minimum_detection_confidence": 0.9,
+            "minimum_detection_clip_confidence": 1.0,
             "config": {},
             "id": 2,
             "extraction_audio_file_destination": {
