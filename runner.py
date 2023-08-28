@@ -24,6 +24,7 @@ SLEEP_AFTER_EMPTY_QUEUE_SECONDS = 30
 
 PID = os.getpid()
 
+
 def main():
     with tempfile.TemporaryDirectory() as temp_dir:
         remote = Remote(

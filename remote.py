@@ -134,6 +134,7 @@ class Remote:
             "analyzer_instance_id": self.instance_id,
             "analyzer_instance_type": self.instance_type,
             "analyzer_duration_seconds": self.analyzer_duration_seconds,
+            "analyzer_version": self.analyzer.version,
             "file_checksum": self.file_checksum,
         }
         return data
@@ -194,6 +195,11 @@ class Remote:
         species_list = analyzer_config.get("species_list", [])
 
         analyzer_kwargs = {}
+
+        if "version" in data["group"]["analyzer_config"]["analyzer"]:
+            analyzer_kwargs["version"] = data["group"]["analyzer_config"]["analyzer"][
+                "version"
+            ]
 
         if len(species_list) != 0:
             analyzer_kwargs["custom_species_list"] = species_list
