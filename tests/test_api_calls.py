@@ -305,7 +305,9 @@ def test_live_analyze():
     remote.queued_audio_dict = dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE).copy()
 
     # Patch response to use 2.3.
-    remote.queued_audio_dict["group"]["analyzer_config"]["analyzer"]["version"] = "2.3"
+    remote.queued_audio_dict["group"]["analyzer_config"]["analyzer"][
+        "base_version"
+    ] = "2.3"
 
     pprint(remote.queued_audio_dict)
     remote._retrieve_file()
@@ -568,7 +570,7 @@ VALID_QUEUE_RESPONSE_LIVE_ANALYZE = {
     "group": {
         "id": 3228,
         "analyzer_config": {
-            "analyzer": {"id": 1, "name": "BirdNET-Analyzer", "version": "2.4"},
+            "analyzer": {"id": 1, "name": "BirdNET-Analyzer", "base_version": "2.4"},
             "minimum_detection_confidence": 0.25,
             "minimum_detection_clip_confidence": 0.5,
             "config": {},
@@ -620,7 +622,7 @@ VALID_QUEUE_SPECIES_LIST_RESPONSE = {
             "analyzer": {
                 "id": 1,
                 "name": "BirdNET-Analyzer",
-                "version": "2.3",
+                "base_version": "2.3",
             },
             "minimum_detection_confidence": 0.25,
             "minimum_detection_clip_confidence": 0.5,

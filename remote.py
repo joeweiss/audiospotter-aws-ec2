@@ -196,9 +196,9 @@ class Remote:
 
         analyzer_kwargs = {}
 
-        if "version" in data["group"]["analyzer_config"]["analyzer"]:
+        if "base_version" in data["group"]["analyzer_config"]["analyzer"]:
             analyzer_kwargs["version"] = data["group"]["analyzer_config"]["analyzer"][
-                "version"
+                "base_version"
             ]
 
         if len(species_list) != 0:
