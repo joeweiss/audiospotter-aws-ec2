@@ -131,3 +131,5 @@ dmypy.json
 .autoenv
 
 BirdNET_GLOBAL_3K*
+Custom_Classifier_Labels.txt
+Custom_Classifier.tflite

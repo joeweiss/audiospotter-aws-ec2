@@ -6,6 +6,9 @@ import os
 from unittest.mock import patch
 from collections import namedtuple
 import pytest
+import copy
+
+from unittest.mock import MagicMock
 
 load_dotenv(".env")
 
@@ -251,7 +254,7 @@ def test_live_analyze():
         aws_access_key_id=S3_ACCESS_KEY,
         aws_secret_access_key=S3_SECRET_KEY,
     )
-    remote.queued_audio_dict = dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE).copy()
+    remote.queued_audio_dict = copy.deepcopy(dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE))
     pprint(remote.queued_audio_dict)
     remote._retrieve_file()
     assert remote.audio_file_obj != None
@@ -302,7 +305,8 @@ def test_live_analyze():
         aws_access_key_id=S3_ACCESS_KEY,
         aws_secret_access_key=S3_SECRET_KEY,
     )
-    remote.queued_audio_dict = dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE).copy()
+
+    remote.queued_audio_dict = copy.deepcopy(dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE))
 
     # Patch response to use 2.3.
     remote.queued_audio_dict["group"]["analyzer_config"]["analyzer"][
@@ -347,6 +351,165 @@ def test_live_analyze():
         assert result is not None
 
     assert os.path.exists(remote.audio_filepath) == False
+
+
+def test_live_multi_analyze():
+    # Processes queue items that have different analyzer configs with the same Remote.
+    # This mimics how the runner works when pulling from a queue with multiple active Analysis Groups.
+
+    queue_item_1 = copy.deepcopy(dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE))
+    queue_item_2 = copy.deepcopy(dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE))
+    queue_item_3 = copy.deepcopy(dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE))
+
+    # Modify second queue item with different version.
+    queue_item_2["group"]["analyzer_config"]["analyzer"]["base_version"] = "2.3"
+
+    assert queue_item_1["group"]["analyzer_config"]["analyzer"]["base_version"] == "2.4"
+    assert queue_item_2["group"]["analyzer_config"]["analyzer"]["base_version"] == "2.3"
+    assert queue_item_3["group"]["analyzer_config"]["analyzer"]["base_version"] == "2.4"
+
+    if not LIVE_TEST:
+        return
+
+    # Create one remote.
+    remote = Remote(
+        api_endpoint=API_ENDPOINT,
+        api_key=API_KEY,
+        processor_id="local123",
+        aws_access_key_id=S3_ACCESS_KEY,
+        aws_secret_access_key=S3_SECRET_KEY,
+    )
+
+    # Test live file download with queue item 1, which is 2.4.
+    remote.queued_audio_dict = queue_item_1
+
+    remote._retrieve_file()
+    assert remote.audio_file_obj != None
+    assert remote.audio_filepath == "./soundscape.wav"
+
+    remote._analyze_file()
+
+    remote._extract_detections_as_audio()
+    remote._extract_detections_as_spectrogram()
+    remote._upload_extractions()
+    remote._upload_json()
+
+    pprint(remote.recording.detections)
+
+    remote._cleanup_files()
+
+    assert remote.analyzer.version == "2.4"
+    assert remote.analyzer.model_download_was_required == False
+
+    pprint(remote._format_results_for_api())
+
+    results = remote._format_results_for_api()
+    pprint(results)
+
+    assert results["file_checksum"] == "cfe5e3e09026b622f98c3572f82091f8"
+    assert len(results["detections"]) == 25
+    assert results["analyzer_version"] == "2.4"
+
+    with patch("remote.requests.post") as mocked_queue_response:
+        Response = namedtuple("Response", ["status_code", "json"])
+        expected_queue_response = {"id": remote.queued_audio_dict["id"]}
+        mocked_response = Response(
+            status_code=201, json=lambda: expected_queue_response
+        )
+        mocked_queue_response.return_value = mocked_response
+        result = remote._save_results_to_server()
+        assert result is not None
+
+    assert os.path.exists(remote.audio_filepath) == False
+
+    # Test live file download with queue item 2, which uses 2.3.
+    remote.queued_audio_dict = queue_item_2
+
+    remote._retrieve_file()
+    assert remote.audio_file_obj != None
+    assert remote.audio_filepath == "./soundscape.wav"
+
+    remote._analyze_file()
+
+    remote._extract_detections_as_audio()
+    remote._extract_detections_as_spectrogram()
+    remote._upload_extractions()
+    remote._upload_json()
+
+    pprint(remote.recording.detections)
+
+    remote._cleanup_files()
+
+    assert remote.analyzer.version == "2.3"
+    assert remote.analyzer.model_download_was_required == False
+
+    pprint(remote._format_results_for_api())
+
+    results = remote._format_results_for_api()
+    pprint(results)
+
+    assert results["file_checksum"] == "cfe5e3e09026b622f98c3572f82091f8"
+    assert len(results["detections"]) == 12
+    assert results["analyzer_version"] == "2.3"
+
+    with patch("remote.requests.post") as mocked_queue_response:
+        Response = namedtuple("Response", ["status_code", "json"])
+        expected_queue_response = {"id": remote.queued_audio_dict["id"]}
+        mocked_response = Response(
+            status_code=201, json=lambda: expected_queue_response
+        )
+        mocked_queue_response.return_value = mocked_response
+        result = remote._save_results_to_server()
+        assert result is not None
+
+    assert os.path.exists(remote.audio_filepath) == False
+
+    # Test live file download with queue item 3, which uses 2.4.
+    remote.queued_audio_dict = queue_item_3
+
+    remote._retrieve_file()
+    assert remote.audio_file_obj != None
+    assert remote.audio_filepath == "./soundscape.wav"
+
+    remote._analyze_file()
+
+    remote._extract_detections_as_audio()
+    remote._extract_detections_as_spectrogram()
+    remote._upload_extractions()
+    remote._upload_json()
+
+    pprint(remote.recording.detections)
+
+    remote._cleanup_files()
+
+    assert remote.analyzer.version == "2.4"
+    assert remote.analyzer.model_download_was_required == False
+
+    pprint(remote._format_results_for_api())
+
+    results = remote._format_results_for_api()
+    pprint(results)
+
+    assert results["file_checksum"] == "cfe5e3e09026b622f98c3572f82091f8"
+    assert len(results["detections"]) == 25
+    assert results["analyzer_version"] == "2.4"
+
+    with patch("remote.requests.post") as mocked_queue_response:
+        Response = namedtuple("Response", ["status_code", "json"])
+        expected_queue_response = {"id": remote.queued_audio_dict["id"]}
+        mocked_response = Response(
+            status_code=201, json=lambda: expected_queue_response
+        )
+        mocked_queue_response.return_value = mocked_response
+        result = remote._save_results_to_server()
+        assert result is not None
+
+    assert os.path.exists(remote.audio_filepath) == False
+
+    # Ensure that only two Analyzers were created.
+    assert len(remote._analyzers.items()) == 2
+    # Ensure that only two initializations occurred.
+    assert remote._analyzers_init_count == 2
 
 
 def test_live_species_list_analyze():
