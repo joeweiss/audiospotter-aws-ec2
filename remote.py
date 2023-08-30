@@ -56,6 +56,8 @@ class Remote:
         self.min_conf_spectrogram_extraction = 0.0
         self.shutdown_on_empty_processing_queue = shutdown_on_empty_processing_queue
         self.runner_count = runner_count
+        self._analyzers = {}
+        self._analyzers_init_count = 0
 
     @property
     def api_headers(self):
@@ -185,6 +187,13 @@ class Remote:
             open(self.audio_filepath, "rb").read()
         ).hexdigest()
 
+    @property
+    def analyzer_config_key(self):
+        data = self.queued_audio_dict
+        return hashlib.md5(
+            json.dumps(data["group"]["analyzer_config"], sort_keys=True).encode("utf-8")
+        ).hexdigest()
+
     def _create_analyzer(self):
         # Currently, only Birdnet-Analyzer is supported.
         # TODO: Add additional analyzers.
@@ -242,6 +251,10 @@ class Remote:
         analyzer = Analyzer(**analyzer_kwargs)
         self.analyzer = analyzer
 
+        # Store the Analyzer instance for later use.
+        self._analyzers[self.analyzer_config_key] = analyzer
+        self._analyzers_init_count = self._analyzers_init_count + 1
+
     def _analyze_file(self):
         data = self.queued_audio_dict
 
@@ -254,9 +267,11 @@ class Remote:
             "minimum_detection_clip_confidence", 0.0
         )
 
-        # Create analyzer if it doesn't already exist.
-        if not self.analyzer:
+        if not self.analyzer_config_key in self._analyzers:
+            # Create analyzer if it doesn't already exist.
             self._create_analyzer()
+        else:
+            self.analyzer = self._analyzers[self.analyzer_config_key]
 
         self.recording = Recording(
             self.analyzer,
