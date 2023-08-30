@@ -9,10 +9,10 @@ import pytest
 
 load_dotenv(".env")
 
-API_ENDPOINT = os.environ.get("API_ENDPOINT")
-API_KEY = os.environ.get("API_KEY")
-S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY")
-S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY")
+API_ENDPOINT = os.environ.get("API_ENDPOINT", "")
+API_KEY = os.environ.get("API_KEY", "")
+S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY", "")
+S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY", "")
 
 from birdnetlib.analyzer import Analyzer
 from io import BytesIO
