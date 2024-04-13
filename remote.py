@@ -9,7 +9,7 @@ import json
 import hashlib
 import time
 from urllib.parse import urlparse
-
+from datetime import datetime
 
 UNSPECIFIED = "Not specified"
 
@@ -267,17 +267,32 @@ class Remote:
             "minimum_detection_clip_confidence", 0.0
         )
 
-        if not self.analyzer_config_key in self._analyzers:
+        if self.analyzer_config_key not in self._analyzers:
             # Create analyzer if it doesn't already exist.
             self._create_analyzer()
         else:
             self.analyzer = self._analyzers[self.analyzer_config_key]
 
-        self.recording = Recording(
-            self.analyzer,
-            self.audio_filepath,
-            min_conf=min_conf,
-        )
+        lat = data["audio"].get("location", {}).get("latitude", None)
+        lon = data["audio"].get("location", {}).get("longitude", None)
+        captured_local_date = data["audio"].get("captured_local_date", None)
+        if lat and lon and captured_local_date:
+            self.recording = Recording(
+                self.analyzer,
+                self.audio_filepath,
+                min_conf=min_conf,
+                lon=lon,
+                lat=lat,
+                date=datetime.strptime(captured_local_date, "%Y-%m-%d").date(),
+                return_all_detections=True,
+            )
+        else:
+            self.recording = Recording(
+                self.analyzer,
+                self.audio_filepath,
+                min_conf=min_conf,
+            )
+
         self.recording.analyze()
         pprint(self.recording.detections)
 
@@ -321,9 +336,9 @@ class Remote:
                     detection["extracted_audio_path"], audio_bucket, key
                 )
                 if success:
-                    detection[
-                        "extracted_audio_url"
-                    ] = f"https://{audio_bucket}.s3.amazonaws.com/{key}"
+                    detection["extracted_audio_url"] = (
+                        f"https://{audio_bucket}.s3.amazonaws.com/{key}"
+                    )
 
             if "extracted_spectrogram_path" in detection:
                 extract_file_name = os.path.basename(
@@ -334,9 +349,9 @@ class Remote:
                     detection["extracted_spectrogram_path"], spectro_bucket, key
                 )
                 if success:
-                    detection[
-                        "extracted_spectrogram_url"
-                    ] = f"https://{spectro_bucket}.s3.amazonaws.com/{key}"
+                    detection["extracted_spectrogram_url"] = (
+                        f"https://{spectro_bucket}.s3.amazonaws.com/{key}"
+                    )
 
         self.uploaded_extractions = _uploaded_extractions
 
