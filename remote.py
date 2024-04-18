@@ -5,7 +5,7 @@ import os
 from botocore.exceptions import ClientError
 from birdnetlib import LargeRecording as Recording
 from birdnetlib.analyzer import LargeRecordingAnalyzer as Analyzer
-
+import traceback
 import json
 import hashlib
 import time
@@ -420,6 +420,7 @@ class Remote:
                 self._save_results_to_server()
         except BaseException as e:
             print(e)
+            traceback.print_exc()
             # TODO: Report back to the api.
 
     def run_queue(self):
