@@ -274,8 +274,17 @@ class Remote:
         else:
             self.analyzer = self._analyzers[self.analyzer_config_key]
 
-        lat = data["audio"].get("location", {}).get("latitude", None)
-        lon = data["audio"].get("location", {}).get("longitude", None)
+        print(data["audio"])
+        lat = (
+            data["audio"]["location"].get("latitude", None)
+            if "location" in data["audio"]
+            else None
+        )
+        lon = (
+            data["audio"]["location"].get("longitude", None)
+            if "location" in data["audio"]
+            else None
+        )
         captured_local_date = data["audio"].get("captured_local_date", None)
         if lat and lon and captured_local_date:
             self.recording = Recording(
