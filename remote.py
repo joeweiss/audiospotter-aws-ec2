@@ -274,7 +274,7 @@ class Remote:
         else:
             self.analyzer = self._analyzers[self.analyzer_config_key]
 
-        if data["audio"]["location"]:
+        if data["audio"].get("location", None):
             lat = data["audio"]["location"].get("latitude", None)
             lon = data["audio"]["location"].get("longitude", None)
         else:
