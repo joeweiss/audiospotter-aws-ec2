@@ -17,7 +17,7 @@ API_KEY = os.environ.get("API_KEY", "")
 S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY", "")
 S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY", "")
 
-from birdnetlib.analyzer import Analyzer
+from birdnetlib.analyzer import LargeRecordingAnalyzer as Analyzer
 from io import BytesIO
 from pprint import pprint
 
@@ -309,9 +309,9 @@ def test_live_analyze():
     remote.queued_audio_dict = copy.deepcopy(dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE))
 
     # Patch response to use 2.3.
-    remote.queued_audio_dict["group"]["analyzer_config"]["analyzer"][
-        "base_version"
-    ] = "2.3"
+    remote.queued_audio_dict["group"]["analyzer_config"]["analyzer"]["base_version"] = (
+        "2.3"
+    )
 
     pprint(remote.queued_audio_dict)
     remote._retrieve_file()

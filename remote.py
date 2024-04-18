@@ -3,8 +3,9 @@ from pprint import pprint
 import boto3
 import os
 from botocore.exceptions import ClientError
-from birdnetlib import Recording
-from birdnetlib.analyzer import Analyzer
+from birdnetlib import LargeRecording as Recording
+from birdnetlib.analyzer import LargeRecordingAnalyzer as Analyzer
+
 import json
 import hashlib
 import time
