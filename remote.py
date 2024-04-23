@@ -4,11 +4,8 @@ import boto3
 import os
 from botocore.exceptions import ClientError
 
-# from birdnetlib import LargeRecording as Recording
-# from birdnetlib.analyzer import LargeRecordingAnalyzer as Analyzer
-
-from birdnetlib import Recording
-from birdnetlib.analyzer import Analyzer
+from birdnetlib import LargeRecording
+from birdnetlib.analyzer import LargeRecordingAnalyzer
 
 import traceback
 import json
@@ -254,7 +251,7 @@ class Remote:
             analyzer_kwargs["classifier_model_path"] = model_filepath
             analyzer_kwargs["classifier_labels_path"] = labels_filepath
 
-        analyzer = Analyzer(**analyzer_kwargs)
+        analyzer = LargeRecordingAnalyzer(**analyzer_kwargs)
         self.analyzer = analyzer
 
         # Store the Analyzer instance for later use.
@@ -288,7 +285,8 @@ class Remote:
 
         captured_local_date = data["audio"].get("captured_local_date", None)
         if lat and lon and captured_local_date:
-            self.recording = Recording(
+            self.recording = LargeRecording(
+
                 self.analyzer,
                 self.audio_filepath,
                 min_conf=min_conf,
@@ -298,7 +296,7 @@ class Remote:
                 return_all_detections=True,
             )
         else:
-            self.recording = Recording(
+            self.recording = LargeRecording(
                 self.analyzer,
                 self.audio_filepath,
                 min_conf=min_conf,
