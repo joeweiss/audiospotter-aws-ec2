@@ -8,10 +8,10 @@ from remote import Remote
 load_dotenv(".env")
 
 API_ENDPOINT = "http://web:8000/api"
-API_KEY = "local-key"
+API_KEY = os.environ.get("LOCAL_PROCESSOR_API", "")
 
-S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY")
-S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY")
+S3_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY")
+S3_SECRET_KEY = os.environ.get("AWS_SECRET_KEY")
 RUNNER_COUNT = os.environ.get("RUNNER_COUNT", 4)
 
 INSTANCE_TYPE = "local-type"
