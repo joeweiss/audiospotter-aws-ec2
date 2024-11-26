@@ -1,0 +1,2 @@
+chirp @ git+https://github.com/google-research/perch.git@373253f5887e2964a51f348e107889dadfdcece0
+tensorflow-hub==0.16.1

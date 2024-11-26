@@ -286,7 +286,6 @@ class Remote:
         captured_local_date = data["audio"].get("captured_local_date", None)
         if lat and lon and captured_local_date:
             self.recording = LargeRecording(
-
                 self.analyzer,
                 self.audio_filepath,
                 min_conf=min_conf,
