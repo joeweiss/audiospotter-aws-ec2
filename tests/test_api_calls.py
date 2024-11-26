@@ -30,7 +30,7 @@ from .utils import (
 
 s3 = boto3.resource("s3")
 
-LIVE_TEST = False
+LIVE_TEST = True
 
 
 # def test_queue():
@@ -40,7 +40,7 @@ LIVE_TEST = False
 #     remote = Remote(api_endpoint=API_ENDPOINT, api_key=API_KEY, processor_id="local123")
 #     item = remote._return_queue_item()
 #     pprint(item)
-#     assert item == None
+#     assert item is None
 
 
 def test_mocked_queue_request():
@@ -56,7 +56,7 @@ def test_mocked_queue_request():
             api_endpoint=API_ENDPOINT, api_key=API_KEY, processor_id="local123"
         )
         item = remote._return_queue_item()
-        assert item == None
+        assert item is None
 
     # Test endpoint verification for https.
     remote = Remote(
@@ -68,7 +68,7 @@ def test_mocked_queue_request():
     remote = Remote(
         api_endpoint="http://example.com", api_key=API_KEY, processor_id="local123"
     )
-    assert remote.verify_request == False
+    assert remote.verify_request is False
 
     # Test non-200 response.
     # TODO: Handle timeouts and retries.
@@ -117,10 +117,10 @@ def test_live_download():
     )
     remote.queued_audio_dict = dict(VALID_QUEUE_RESPONSE)
     remote._retrieve_file()
-    assert remote.audio_file_obj != None
+    assert remote.audio_file_obj is not None
     assert remote.audio_filepath == "./soundscape.wav"
     remote._cleanup_files()
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
     # Handle missing file (404 from S3)
     error_audio_dict = dict(remote.queued_audio_dict)
@@ -135,9 +135,9 @@ def test_live_download():
     with pytest.raises(ConnectionError) as e:
         remote._retrieve_file()
     assert str(e.value) == expected_error_text
-    assert remote.audio_file_obj == None
+    assert remote.audio_file_obj is None
     # Confirm files are cleaned up automatically on exceptions.
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
     # Handle credential error (403 from S3)
     remote.queued_audio_dict = dict(VALID_QUEUE_RESPONSE)  # Reset valid audio dict.
@@ -151,9 +151,9 @@ def test_live_download():
     with pytest.raises(ConnectionError) as e:
         remote._retrieve_file()
     assert str(e.value) == expected_error_text
-    assert remote.audio_file_obj == None
+    assert remote.audio_file_obj is None
     # Confirm files are cleaned up automatically on exceptions.
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
 
 def test_mocked_downloads():
@@ -198,10 +198,10 @@ def test_mocked_downloads():
     remote._retrieve_file()  # This is a real file now, let's analyze it.
     remote._analyze_file()
     assert len(remote.recording.detections) == 4
-    assert remote.audio_file_obj != None
+    assert remote.audio_file_obj is not None
     assert remote.audio_filepath == "./file.wav"
     remote._cleanup_files()
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
 
 def test_mocked_s3_error_download():
@@ -235,9 +235,9 @@ def test_mocked_s3_error_download():
     with pytest.raises(ConnectionError) as e:
         remote._retrieve_file()
     assert str(e.value) == expected_error_text
-    assert remote.audio_file_obj == None
+    assert remote.audio_file_obj is None
     # Confirm files are cleaned up automatically on exceptions.
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
     # TODO: Report error back to manager API in a different test.
 
@@ -257,7 +257,7 @@ def test_live_analyze():
     remote.queued_audio_dict = copy.deepcopy(dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE))
     pprint(remote.queued_audio_dict)
     remote._retrieve_file()
-    assert remote.audio_file_obj != None
+    assert remote.audio_file_obj is not None
     assert remote.audio_filepath == "./soundscape.wav"
 
     remote._analyze_file()
@@ -272,7 +272,7 @@ def test_live_analyze():
     remote._cleanup_files()
 
     assert remote.analyzer.version == "2.4"
-    assert remote.analyzer.model_download_was_required == False
+    assert remote.analyzer.model_download_was_required is False
 
     pprint(remote._format_results_for_api())
 
@@ -293,7 +293,7 @@ def test_live_analyze():
         result = remote._save_results_to_server()
         assert result is not None
 
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
     # Test with 2.3.
 
@@ -315,7 +315,7 @@ def test_live_analyze():
 
     pprint(remote.queued_audio_dict)
     remote._retrieve_file()
-    assert remote.audio_file_obj != None
+    assert remote.audio_file_obj is not None
     assert remote.audio_filepath == "./soundscape.wav"
 
     remote._analyze_file()
@@ -350,7 +350,7 @@ def test_live_analyze():
         result = remote._save_results_to_server()
         assert result is not None
 
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
 
 def test_live_multi_analyze():
@@ -384,7 +384,7 @@ def test_live_multi_analyze():
     remote.queued_audio_dict = queue_item_1
 
     remote._retrieve_file()
-    assert remote.audio_file_obj != None
+    assert remote.audio_file_obj is not None
     assert remote.audio_filepath == "./soundscape.wav"
 
     remote._analyze_file()
@@ -399,7 +399,7 @@ def test_live_multi_analyze():
     remote._cleanup_files()
 
     assert remote.analyzer.version == "2.4"
-    assert remote.analyzer.model_download_was_required == False
+    assert remote.analyzer.model_download_was_required is False
 
     pprint(remote._format_results_for_api())
 
@@ -420,13 +420,13 @@ def test_live_multi_analyze():
         result = remote._save_results_to_server()
         assert result is not None
 
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
     # Test live file download with queue item 2, which uses 2.3.
     remote.queued_audio_dict = queue_item_2
 
     remote._retrieve_file()
-    assert remote.audio_file_obj != None
+    assert remote.audio_file_obj is not None
     assert remote.audio_filepath == "./soundscape.wav"
 
     remote._analyze_file()
@@ -441,7 +441,7 @@ def test_live_multi_analyze():
     remote._cleanup_files()
 
     assert remote.analyzer.version == "2.3"
-    assert remote.analyzer.model_download_was_required == False
+    assert remote.analyzer.model_download_was_required is False
 
     pprint(remote._format_results_for_api())
 
@@ -462,13 +462,13 @@ def test_live_multi_analyze():
         result = remote._save_results_to_server()
         assert result is not None
 
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
     # Test live file download with queue item 3, which uses 2.4.
     remote.queued_audio_dict = queue_item_3
 
     remote._retrieve_file()
-    assert remote.audio_file_obj != None
+    assert remote.audio_file_obj is not None
     assert remote.audio_filepath == "./soundscape.wav"
 
     remote._analyze_file()
@@ -483,7 +483,7 @@ def test_live_multi_analyze():
     remote._cleanup_files()
 
     assert remote.analyzer.version == "2.4"
-    assert remote.analyzer.model_download_was_required == False
+    assert remote.analyzer.model_download_was_required is False
 
     pprint(remote._format_results_for_api())
 
@@ -504,7 +504,7 @@ def test_live_multi_analyze():
         result = remote._save_results_to_server()
         assert result is not None
 
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
     # Ensure that only two Analyzers were created.
     assert len(remote._analyzers.items()) == 2
@@ -527,7 +527,7 @@ def test_live_species_list_analyze():
     remote.queued_audio_dict = dict(VALID_QUEUE_SPECIES_LIST_RESPONSE)
     pprint(remote.queued_audio_dict)
     remote._retrieve_file()
-    assert remote.audio_file_obj != None
+    assert remote.audio_file_obj is not None
     assert remote.audio_filepath == "./soundscape.wav"
 
     remote._analyze_file()
@@ -562,16 +562,19 @@ def test_live_species_list_analyze():
         result = remote._save_results_to_server()
         assert result is not None
 
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
 
 def test_live_analyze_custom_classifier():
+    # Don't run live unless the API endpoint is setup for testing.
+    return
+
     if not LIVE_TEST:
         return
 
     # Test live file download.
 
-    print(API_ENDPOINT)
+    print("API_ENDPOINT", API_ENDPOINT)
 
     remote = Remote(
         api_endpoint=API_ENDPOINT,
@@ -583,7 +586,7 @@ def test_live_analyze_custom_classifier():
     remote.queued_audio_dict = dict(VALID_QUEUE_CUSTOM_CLASSIFIERS_RESPONSE)
     pprint(remote.queued_audio_dict)
     remote._retrieve_file()
-    assert remote.audio_file_obj != None
+    assert remote.audio_file_obj is not None
     assert remote.audio_filepath == "./soundscape.wav"
 
     remote._analyze_file()
@@ -614,7 +617,7 @@ def test_live_analyze_custom_classifier():
         result = remote._save_results_to_server()
         assert result is not None
 
-    assert os.path.exists(remote.audio_filepath) == False
+    assert os.path.exists(remote.audio_filepath) is False
 
 
 LIVE_QUEUE_RESPONSE = {
