@@ -133,3 +133,5 @@ dmypy.json
 BirdNET_GLOBAL_3K*
 Custom_Classifier_Labels.txt
 Custom_Classifier.tflite
+compressed_data.npy.gz
+output_v8.json

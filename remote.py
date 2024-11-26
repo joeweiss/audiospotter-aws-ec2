@@ -6,6 +6,7 @@ from botocore.exceptions import ClientError
 
 from birdnetlib import LargeRecording
 from birdnetlib.analyzer import LargeRecordingAnalyzer
+from perch import PerchLargeRecording, PerchAnalyzer
 
 import traceback
 import json
@@ -197,6 +198,20 @@ class Remote:
             json.dumps(data["group"]["analyzer_config"], sort_keys=True).encode("utf-8")
         ).hexdigest()
 
+    def _create_perch_analyzer(self):
+        print("_create_perch_analyzer")
+
+        data = self.queued_audio_dict
+        analyzer_config = data["group"]["analyzer_config"]
+        pprint(analyzer_config)
+
+        analyzer = PerchAnalyzer()
+        self.analyzer = analyzer
+
+        # Store the Analyzer instance for later use.
+        self._analyzers[self.analyzer_config_key] = analyzer
+        self._analyzers_init_count = self._analyzers_init_count + 1
+
     def _create_analyzer(self):
         # Currently, only Birdnet-Analyzer is supported.
         # TODO: Add additional analyzers.
@@ -270,9 +285,15 @@ class Remote:
             "minimum_detection_clip_confidence", 0.0
         )
 
+        recording_class = LargeRecording
+        _create_analyzer_func = self._create_analyzer
+        if analyzer_config["analyzer"]["name"] == "Perch":
+            recording_class = PerchLargeRecording
+            _create_analyzer_func = self._create_perch_analyzer
+
         if self.analyzer_config_key not in self._analyzers:
             # Create analyzer if it doesn't already exist.
-            self._create_analyzer()
+            _create_analyzer_func()
         else:
             self.analyzer = self._analyzers[self.analyzer_config_key]
 
@@ -283,9 +304,13 @@ class Remote:
             lat = None
             lon = None
 
+        recording_class = LargeRecording
+        if analyzer_config["analyzer"]["name"] == "Perch":
+            recording_class = PerchLargeRecording
+
         captured_local_date = data["audio"].get("captured_local_date", None)
         if lat and lon and captured_local_date:
-            self.recording = LargeRecording(
+            self.recording = recording_class(
                 self.analyzer,
                 self.audio_filepath,
                 min_conf=min_conf,
@@ -295,7 +320,7 @@ class Remote:
                 return_all_detections=True,
             )
         else:
-            self.recording = LargeRecording(
+            self.recording = recording_class(
                 self.analyzer,
                 self.audio_filepath,
                 min_conf=min_conf,
