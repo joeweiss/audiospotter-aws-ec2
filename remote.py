@@ -4,8 +4,8 @@ import boto3
 import os
 from botocore.exceptions import ClientError
 
-from birdnetlib import LargeRecording
-from birdnetlib.analyzer import LargeRecordingAnalyzer
+from birdnetlib import Recording as LargeRecording
+from birdnetlib.analyzer import Analyzer as LargeRecordingAnalyzer
 from perch import PerchLargeRecording, PerchAnalyzer
 
 import traceback
@@ -31,6 +31,7 @@ class Remote:
         audio_directory=".",
         extraction_audio_directory=".",
         extraction_spectrogram_directory=".",
+        extraction_embeddings_directory=".",
         analyzer=None,
         sleep_secs_on_empty_queue=3,
         runner_count=1,
@@ -47,6 +48,7 @@ class Remote:
         self.audio_directory = audio_directory
         self.extraction_audio_directory = extraction_audio_directory
         self.extraction_spectrogram_directory = extraction_spectrogram_directory
+        self.extraction_embeddings_directory = extraction_embeddings_directory
         self.audio_file_obj = None
         self.audio_filepath = None
         self.analyzer = analyzer
@@ -184,6 +186,8 @@ class Remote:
             if "extracted_spectrogram_path" in detection:
                 if os.path.exists(detection["extracted_spectrogram_path"]):
                     os.remove(detection["extracted_spectrogram_path"])
+        if os.path.exists(self.embeddings_path):
+            os.remove(self.embeddings_path)
 
     def _set_checksum(self):
         print("_set_checksum")
@@ -326,8 +330,15 @@ class Remote:
                 min_conf=min_conf,
             )
 
+        print(self.recording)
         self.recording.analyze()
         pprint(self.recording.detections)
+
+        if analyzer_config.get("include_embeddings", False):
+            print(self.recording)
+            self.recording.extract_embeddings()
+
+        pprint(self.recording.embeddings_list)
 
         self._set_checksum()
 
@@ -340,10 +351,30 @@ class Remote:
 
     def _extract_detections_as_spectrogram(self):
         print("_extract_detections_as_spectrogram")
-        export_dir = self.extraction_spectrogram_directory
+        export_dir = self.extraction_embeddings_directory
         self.recording.extract_detections_as_spectrogram(
             directory=export_dir, min_conf=self.min_conf_spectrogram_extraction
         )
+
+    def _save_embeddings(self):
+        data = self.queued_audio_dict
+        analyzer_config = data["group"]["analyzer_config"]
+        if not analyzer_config.get("include_embeddings", False):
+            return
+        export_dir = self.extraction_spectrogram_directory
+        self.embeddings_path = f"{export_dir}/{self.recording.filestem}_embeddings.json"
+        if analyzer_config["analyzer"]["name"] == "Perch":
+            # Handle Perch embeddings here, they're in the recording class post-analyze.
+            # print("handle Perch embeddings here.")
+            with open(self.embeddings_path, "w") as file:
+                json.dump(
+                    self.recording.embeddings_list,
+                    file,
+                )
+        else:
+            # Handle BN embeddings here, requires an extra step in BN.
+            print("BirdNET embeddings not yet implemented.")
+            pass
 
     def _upload_extractions(self):
         # Audio and spectrograms.
@@ -400,6 +431,20 @@ class Remote:
         key = f"{source_file_path}_data.json"
         body = json.dumps(data)
         self.client.put_object(Body=body, Bucket=bucket, Key=key)
+
+    def _upload_embeddings(self):
+        print("_upload_embeddings")
+
+        # Includes config (algo, min_conf, etc) and extractions
+        bucket = self.queued_audio_dict["group"]["analyzer_config"][
+            "analysis_json_file_destination"
+        ]["s3_bucket"]
+        source_file_path = self.queued_audio_dict["audio"]["file_path"]
+        key = f"{source_file_path}_embeddings.json"
+        print(key)
+        self.client.upload_file(
+            self.embeddings_path, bucket, key
+        )  # Returns no response. Will raise on error.
 
     def _upload_file_to_s3(self, filepath, bucket, key):
         # Upload S3 file.

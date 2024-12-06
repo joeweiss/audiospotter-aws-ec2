@@ -53,6 +53,7 @@ class PerchAnalyzer:
         start = 0
         end = recording.sample_secs
         results = {}
+        embeddings = []
 
         # Read segments via generator function so that the entire audio file is never loaded into RAM.
         # TODO: Adapt this to be used by all Analyzers, assuming this works well with Canopy testing.
@@ -74,7 +75,16 @@ class PerchAnalyzer:
             model_outputs = self.model.infer_tf(c[np.newaxis, :])
 
             # Examine the embeddings.
-            print(model_outputs["embedding"].shape)
+            # print(model_outputs["embedding"].shape)
+            embeddings.append(
+                {
+                    "start_time": start,
+                    "end_time": end,
+                    "embeddings": [
+                        float(x) for x in model_outputs["embedding"].numpy().flatten()
+                    ],
+                }
+            )
 
             # Convert logits to probabilities
             logits = model_outputs["label"]
@@ -104,6 +114,12 @@ class PerchAnalyzer:
 
         self.results = results
         recording.detection_list = self.detections
+        # NOTE: With Perch, embeddings are extracted with every run; see recording.embeddings
+        recording.embeddings_list = embeddings
+
+    def extract_embeddings_for_recording(self, recording):
+        print("extract_embeddings_for_recording", recording)
+        self.embeddings = recording.embeddings
 
     @property
     def detections(self):
@@ -145,6 +161,7 @@ class PerchLargeRecording(LargeRecording):
         overlap=0,
         return_all_detections=False,
     ):
+        self.embeddings_list = []
         super().__init__(
             analyzer,
             path,

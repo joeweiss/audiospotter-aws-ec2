@@ -38,7 +38,9 @@ def test_calls():
         aws_secret_access_key=S3_SECRET_KEY,
     )
 
-    remote.queued_audio_dict = copy.deepcopy(dict(VALID_QUEUE_RESPONSE_LIVE_ANALYZE))
+    remote.queued_audio_dict = copy.deepcopy(
+        dict(VALID_QUEUE_RESPONSE_LIVE_PERCH_ANALYZE)
+    )
 
     remote._retrieve_file()
     assert remote.audio_file_obj is not None
@@ -57,8 +59,10 @@ def test_calls():
     remote._analyze_file()
     remote._extract_detections_as_audio()
     remote._extract_detections_as_spectrogram()
+    remote._save_embeddings()
     remote._upload_extractions()
     remote._upload_json()
+    remote._upload_embeddings()
 
     pprint(remote.recording.detections)
     pprint(remote._format_results_for_api())
@@ -66,7 +70,7 @@ def test_calls():
     remote._cleanup_files()
 
 
-VALID_QUEUE_RESPONSE_LIVE_ANALYZE = {
+VALID_QUEUE_RESPONSE_LIVE_PERCH_ANALYZE = {
     "id": 3228,
     "status": "in_progress",
     "group": {
@@ -75,6 +79,7 @@ VALID_QUEUE_RESPONSE_LIVE_ANALYZE = {
             "analyzer": {"id": 1, "name": "Perch", "base_version": "8"},
             "minimum_detection_confidence": 0.5,
             "minimum_detection_clip_confidence": 0.5,
+            "include_embeddings": True,
             "config": {},
             "id": 2,
             "extraction_audio_file_destination": {
