@@ -49,6 +49,7 @@ class Remote:
         self.extraction_audio_directory = extraction_audio_directory
         self.extraction_spectrogram_directory = extraction_spectrogram_directory
         self.extraction_embeddings_directory = extraction_embeddings_directory
+        self.embeddings_path = None
         self.audio_file_obj = None
         self.audio_filepath = None
         self.analyzer = analyzer
@@ -186,7 +187,7 @@ class Remote:
             if "extracted_spectrogram_path" in detection:
                 if os.path.exists(detection["extracted_spectrogram_path"]):
                     os.remove(detection["extracted_spectrogram_path"])
-        if os.path.exists(self.embeddings_path):
+        if self.embeddings_path and os.path.exists(self.embeddings_path):
             os.remove(self.embeddings_path)
 
     def _set_checksum(self):
