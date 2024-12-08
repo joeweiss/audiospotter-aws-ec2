@@ -438,7 +438,10 @@ class Remote:
 
     def _upload_embeddings(self):
         print("_upload_embeddings")
-
+        data = self.queued_audio_dict
+        analyzer_config = data["group"]["analyzer_config"]
+        if not analyzer_config.get("include_embeddings", False):
+            return
         # Includes config (algo, min_conf, etc) and extractions
         bucket = self.queued_audio_dict["group"]["analyzer_config"][
             "analysis_json_file_destination"
@@ -494,10 +497,12 @@ class Remote:
                 self._analyze_file()
                 self._extract_detections_as_audio()
                 self._extract_detections_as_spectrogram()
+                self._save_embeddings()
                 self._upload_extractions()
                 self.analyzer_duration_seconds = round(time.time() - self.start_time, 2)
                 # Processing complete, timer stopped.
                 self._upload_json()
+                self._upload_embeddings()
                 self._cleanup_files()
                 self._save_results_to_server()
         except BaseException as e:
