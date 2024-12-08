@@ -294,7 +294,7 @@ class Remote:
 
         recording_class = LargeRecording
         _create_analyzer_func = self._create_analyzer
-        if analyzer_config["analyzer"]["name"] == "Perch":
+        if analyzer_config["analyzer"].get("base_type") == "perch":
             recording_class = PerchLargeRecording
             _create_analyzer_func = self._create_perch_analyzer
 
@@ -312,7 +312,7 @@ class Remote:
             lon = None
 
         recording_class = LargeRecording
-        if analyzer_config["analyzer"]["name"] == "Perch":
+        if analyzer_config["analyzer"].get("base_type") == "perch":
             recording_class = PerchLargeRecording
 
         captured_local_date = data["audio"].get("captured_local_date", None)
@@ -367,7 +367,7 @@ class Remote:
             return
         export_dir = self.extraction_embeddings_directory
         self.embeddings_path = f"{export_dir}/{self.recording.filestem}_embeddings.json"
-        if analyzer_config["analyzer"]["name"] == "Perch":
+        if analyzer_config["analyzer"].get("base_type", "") == "perch":
             # Handle Perch embeddings here, they're in the recording class post-analyze.
             # print("handle Perch embeddings here.")
             with open(self.embeddings_path, "w") as file:

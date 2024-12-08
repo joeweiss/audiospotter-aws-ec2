@@ -76,7 +76,12 @@ VALID_QUEUE_RESPONSE_LIVE_PERCH_ANALYZE = {
     "group": {
         "id": 3228,
         "analyzer_config": {
-            "analyzer": {"id": 1, "name": "Perch", "base_version": "8"},
+            "analyzer": {
+                "id": 1,
+                "name": "Perch",
+                "base_type": "perch",
+                "base_version": "8",
+            },
             "minimum_detection_confidence": 0.5,
             "minimum_detection_clip_confidence": 0.5,
             "include_embeddings": True,
