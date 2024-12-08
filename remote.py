@@ -50,6 +50,7 @@ class Remote:
         self.extraction_spectrogram_directory = extraction_spectrogram_directory
         self.extraction_embeddings_directory = extraction_embeddings_directory
         self.embeddings_path = None
+        self.embeddings_destination = None
         self.audio_file_obj = None
         self.audio_filepath = None
         self.analyzer = analyzer
@@ -145,6 +146,7 @@ class Remote:
             "analyzer_duration_seconds": self.analyzer_duration_seconds,
             "analyzer_version": self.analyzer.version,
             "file_checksum": self.file_checksum,
+            "embeddings": self.embeddings_destination or {},
         }
         return data
 
@@ -335,11 +337,12 @@ class Remote:
         self.recording.analyze()
         pprint(self.recording.detections)
 
+        self.embeddings_destination = None
         if analyzer_config.get("include_embeddings", False):
             print(self.recording)
             self.recording.extract_embeddings()
 
-        pprint(self.recording.embeddings_list)
+        # pprint(self.recording.embeddings_list)
 
         self._set_checksum()
 
@@ -352,7 +355,7 @@ class Remote:
 
     def _extract_detections_as_spectrogram(self):
         print("_extract_detections_as_spectrogram")
-        export_dir = self.extraction_embeddings_directory
+        export_dir = self.extraction_spectrogram_directory
         self.recording.extract_detections_as_spectrogram(
             directory=export_dir, min_conf=self.min_conf_spectrogram_extraction
         )
@@ -362,7 +365,7 @@ class Remote:
         analyzer_config = data["group"]["analyzer_config"]
         if not analyzer_config.get("include_embeddings", False):
             return
-        export_dir = self.extraction_spectrogram_directory
+        export_dir = self.extraction_embeddings_directory
         self.embeddings_path = f"{export_dir}/{self.recording.filestem}_embeddings.json"
         if analyzer_config["analyzer"]["name"] == "Perch":
             # Handle Perch embeddings here, they're in the recording class post-analyze.
@@ -442,6 +445,7 @@ class Remote:
         ]["s3_bucket"]
         source_file_path = self.queued_audio_dict["audio"]["file_path"]
         key = f"{source_file_path}_embeddings.json"
+        self.embeddings_destination = {"bucket": bucket, "key": key}
         print(key)
         self.client.upload_file(
             self.embeddings_path, bucket, key
