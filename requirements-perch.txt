@@ -1,0 +1,2 @@
+chirp @ git+https://github.com/google-research/perch.git@ac6e04773b39cd2f2dd5b1a148fbea8a43702b64
+resampy==0.4.2

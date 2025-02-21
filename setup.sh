@@ -40,6 +40,7 @@ pyenv activate $VENV
 
 python -m pip install --upgrade pip
 pip install -r requirements.txt
+pip install -r requirements-perch.txt
 
 # To watch this process: tail -f /var/log/cloud-init-output.log
 
@@ -51,15 +52,15 @@ mkdir extractions
 
 # Start services
 
-for (( c=1; c<=$RUNNER_COUNT; c++ ))
-do
-    sudo cp /home/ubuntu/audiospotter-aws-ec2/runner.service /etc/systemd/system/runner_$c.service
-    sudo systemctl enable runner_$c
-    sudo systemctl daemon-reload
-    sudo systemctl start runner_$c
-    # Stagger startup to prevent overwhelming the memory with simultaneous audioreads.
-    sleep 15
-done
+# for (( c=1; c<=$RUNNER_COUNT; c++ ))
+# do
+#     sudo cp /home/ubuntu/audiospotter-aws-ec2/runner.service /etc/systemd/system/runner_$c.service
+#     sudo systemctl enable runner_$c
+#     sudo systemctl daemon-reload
+#     sudo systemctl start runner_$c
+#     # Stagger startup to prevent overwhelming the memory with simultaneous audioreads.
+#     sleep 15
+# done
 
 # To follow along, do this: sudo journalctl -u runner_1 -f
 
