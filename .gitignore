@@ -133,3 +133,6 @@ dmypy.json
 BirdNET_GLOBAL_3K*
 Custom_Classifier_Labels.txt
 Custom_Classifier.tflite
+
+raw_audio/
+working_directory/
