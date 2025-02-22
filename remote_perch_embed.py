@@ -167,6 +167,7 @@ class Remote:
             if audio_filepath.exists():
                 continue
 
+            print(f"Downloading {filename}")
             bucket = data["file_source"]["s3_bucket"]
             object_key = data["file_path"]
 
