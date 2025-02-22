@@ -420,7 +420,7 @@ class Remote:
             )
 
             with tf_examples.EmbeddingsTFRecordMultiWriter(
-                output_dir=output_dir, num_files=config.get("tf_record_shards", 1)
+                output_dir=output_dir
             ) as file_writer:
                 total_sources = len(new_source_infos)
 
