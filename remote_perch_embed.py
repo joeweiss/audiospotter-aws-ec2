@@ -268,7 +268,7 @@ class Remote:
         print(response)
         print(response.status_code)
         print("Shutting down now!!!!!!!!!")
-        # os.system("sudo shutdown now -h")
+        os.system("sudo shutdown now -h")
 
     def process(self):
         # Retrieves item from queue, downloads, evaluates and returns as defined.

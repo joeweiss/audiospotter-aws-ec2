@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 import os
-
+import requests
 
 from remote_perch_embed import Remote
 
@@ -15,8 +15,11 @@ RUNNER_COUNT = os.environ.get("RUNNER_COUNT", 4)
 
 EMBEDDING_BUCKET = os.environ.get("EMBEDDING_BUCKET")
 
-INSTANCE_TYPE = "local-type"
-INSTANCE_ID = "local-id"
+response = requests.get("http://169.254.169.254/latest/meta-data/instance-type")
+INSTANCE_TYPE = response.text
+
+response = requests.get("http://169.254.169.254/latest/meta-data/instance-id")
+INSTANCE_ID = response.text
 
 SLEEP_AFTER_EMPTY_QUEUE_SECONDS = 30
 
