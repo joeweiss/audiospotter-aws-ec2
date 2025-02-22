@@ -266,7 +266,9 @@ class Remote:
             verify=self.verify_request,
         )
         print(response)
-        os.system("sudo shutdown now -h")
+        print(response.status_code)
+        print("Shutting down now!!!!!!!!!")
+        # os.system("sudo shutdown now -h")
 
     def process(self):
         # Retrieves item from queue, downloads, evaluates and returns as defined.
