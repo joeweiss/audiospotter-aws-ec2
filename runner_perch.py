@@ -39,7 +39,7 @@ def main():
         runner_count=RUNNER_COUNT,
         shutdown_on_empty_processing_queue=False,
         location_id=210,  # Magical for the moment.
-        limit=50,
+        limit=10,
         destination_bucket=EMBEDDING_BUCKET,
     )
     print(remote)
