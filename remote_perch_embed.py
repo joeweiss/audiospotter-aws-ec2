@@ -12,7 +12,6 @@ from botocore.exceptions import ClientError
 from chirp.inference import colab_utils
 from etils import epath
 from ml_collections import config_dict
-from tqdm import tqdm
 
 colab_utils.initialize(use_tf_gpu=True, disable_warnings=True)
 
@@ -159,7 +158,7 @@ class Remote:
 
     def _retrieve_files(self):
         # Download the files to a directory with a progress bar
-        for data in tqdm(self.audio_list, desc="Downloading audio files", unit="file"):
+        for data in self.audio_list:
             filename = os.path.basename(data["file_path"])
             extension = os.path.splitext(filename)[1]
             audio_filepath = Path(self.audio_directory) / f"{data['id']}{extension}"
@@ -412,28 +411,42 @@ class Remote:
                 sample_rate=config.embed_fn_config.model_config.sample_rate,
                 window_size_s=config.get("shard_len_s", -1.0),
             )
+
             audio_iterator = audio_utils.multi_load_audio_window(
                 filepaths=[s.filepath for s in new_source_infos],
                 offsets=[s.shard_num * s.shard_len_s for s in new_source_infos],
                 audio_loader=audio_loader,
             )
+
             with tf_examples.EmbeddingsTFRecordMultiWriter(
                 output_dir=output_dir, num_files=config.get("tf_record_shards", 1)
             ) as file_writer:
-                for source_info, audio in tqdm(
-                    zip(new_source_infos, audio_iterator), total=len(new_source_infos)
+                total_sources = len(new_source_infos)
+
+                for idx, (source_info, audio) in enumerate(
+                    zip(new_source_infos, audio_iterator), start=1
                 ):
                     if not embed_fn.validate_audio(source_info, audio):
                         continue
+
                     file_id = source_info.file_id(config.embed_fn_config.file_id_depth)
                     offset_s = source_info.shard_num * source_info.shard_len_s
                     example = embed_fn.audio_to_example(file_id, offset_s, audio)
+
                     if example is None:
                         fail += 1
                         continue
+
                     file_writer.write(example.SerializeToString())
                     succ += 1
+
+                    if (
+                        idx % 10 == 0 or idx == total_sources
+                    ):  # Log every 10 iterations and at the end
+                        print(f"Processed {idx}/{total_sources} files...")
+
                 file_writer.flush()
+
         finally:
             del audio_iterator
         print(f"\n\nSuccessfully processed {succ} source_infos, failed {fail} times.")
