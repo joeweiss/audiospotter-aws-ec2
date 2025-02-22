@@ -9,8 +9,8 @@ load_dotenv(".env")
 API_ENDPOINT = os.environ.get("API_ENDPOINT")
 API_KEY = os.environ.get("API_KEY")
 
-S3_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY")
-S3_SECRET_KEY = os.environ.get("AWS_SECRET_KEY")
+S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY")
+S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY")
 RUNNER_COUNT = os.environ.get("RUNNER_COUNT", 4)
 
 EMBEDDING_BUCKET = os.environ.get("EMBEDDING_BUCKET")
