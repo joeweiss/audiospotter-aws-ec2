@@ -73,8 +73,9 @@ class Remote:
         self.audio_list = []
         self.error_audio_list = []
         self.limit = limit
-        self.embedding_filepath = "working_directory"
+        self.embedding_filepath = f"{self.audio_directory}/perch"
         self.destination_bucket = destination_bucket
+        self.dataset = None
 
     @property
     def api_headers(self):
@@ -83,16 +84,14 @@ class Remote:
             "BNL_PROCESSOR_ID": self.processor_id,
         }
 
-    def _return_audio_items_for_location(self):
+    def _return_audio_items(self):
         # TODO: Handle 404 and 500 with fibonacci backoff
         server_id = self.processor_id
         pid = self.pid
         data = {"server_id": server_id, "pid": pid}
         data["api_key"] = self.api_key  # Add api_key to outgoing request
-        url = f"{self.api_endpoint}/audio/location/{self.location_id}/"
-        if self.limit:
-            url = f"{url}?limit={self.limit}"
-        response = requests.get(
+        url = f"{self.api_endpoint}/queues/audio-list/"
+        response = requests.post(
             url,
             json=data,
             headers=self.api_headers,
@@ -103,29 +102,52 @@ class Remote:
                 f"Remote could not connect to API endpoint (status {response.status_code})."
             )
         data = response.json()
-        self.audio_list = data
-        # Confirm required file space (ideally this needs to be done prior to server launch)
-        total_bytes = sum([i["file_bytes"] for i in self.audio_list if i["file_bytes"]])
-        print("total GBs for audio: ", total_bytes / (1024**3))
-        total, used, free = shutil.disk_usage("/")
-        print("free space GBs: ", free / (1024**3))
-        print(total, used, free)
+        # print(data)
+
+        if "queued_audio" in data:
+            # queued_audio returned, return this.
+            self.dataset = data["dataset"]
+            return data["queued_audio"]
+        if data.get("safe_to_shutdown", False):
+            if self.shutdown_on_empty_processing_queue:
+                # Shutdown here
+                self._shutdown()
+            else:
+                print(
+                    "safe_to_shutdown is True, but shutdown_on_empty_processing_queue is False."
+                )
+
+        # print(data)
+        # audio_list = data["queued_audio"]
+        # self.dataset = data["dataset"]
+        # # Confirm required file space (ideally this needs to be done prior to server launch)
+        # total_bytes = sum([i["file_bytes"] for i in audio_list if i["file_bytes"]])
+        # print("total GBs for audio: ", total_bytes / (1024**3))
+        # total, used, free = shutil.disk_usage("/")
+        # print("free space GBs: ", free / (1024**3))
+        # print(total, used, free)
+
+        # return audio_list
 
         return None
 
     def _save_results_to_server(self):
         # TODO: Handle 404 and 500 with fibonacci backoff
-        data = self._format_results_for_api()
+        data = {}
         data["api_key"] = self.api_key  # Add api_key to outgoing request
-        audio_id = self.queued_audio_dict["id"]
-        results_endpoint = f"{self.api_endpoint}/queues/audio/{audio_id}/results/"
+        data["queued_audio_ids"] = [i["id"] for i in self.audio_list]
+        data["completed"] = True
+        data["analyzer_instance_id"] = self.processor_id
+
+        results_endpoint = f"{self.api_endpoint}/queues/audio-list/dataset/{self.dataset['id']}/results/"
+
         response = requests.post(
             results_endpoint,
             json=data,
             headers=self.api_headers,
             verify=self.verify_request,
         )
-        if response.status_code != 201:
+        if response.status_code != 200:
             raise ConnectionError(
                 f"Remote could not connect to API endpoint (status {response.status_code})."
             )
@@ -159,23 +181,29 @@ class Remote:
     def _retrieve_files(self):
         # Download the files to a directory with a progress bar
         for data in self.audio_list:
-            filename = os.path.basename(data["file_path"])
+            print("-" * 80)
+            print(data)
+
+            audio = data["audio"]
+
+            filename = os.path.basename(audio["file_path"])
             extension = os.path.splitext(filename)[1]
-            audio_filepath = Path(self.audio_directory) / f"{data['id']}{extension}"
+            audio_filepath = Path(self.audio_directory) / f"{audio['id']}{extension}"
 
             # Skip downloading if the file already exists
             if audio_filepath.exists():
+                print("audio already exists")
                 continue
 
             print(f"Downloading {filename}")
-            bucket = data["file_source"]["s3_bucket"]
-            object_key = data["file_path"]
+            bucket = audio["file_source"]["s3_bucket"]
+            object_key = audio["file_path"]
 
             try:
                 with open(audio_filepath, "wb") as f:
                     self.client.download_fileobj(bucket, object_key, f)
             except ClientError as e:
-                self.error_audio_list.append({"data": data, "e": str(e)})
+                self.error_audio_list.append({"data": audio, "e": str(e)})
 
     def _upload_embeddings(self):
         """Uploads all files from the given filepath to the specified S3 bucket.
@@ -183,20 +211,26 @@ class Remote:
         The directory structure in S3 will be:
         /location/{self.location_id}/<filename>
         """
-        s3_prefix = f"location/{self.location_id}/"
-        bucket = self.destination_bucket
+        print("_upload_embeddings")
+        s3_prefix = self.dataset["file_path"]
+        bucket = self.dataset["file_destination"]["s3_bucket"]
+
+        print(s3_prefix)
+        print(bucket)
 
         ignore_files = {".DS_Store"}  # Use a set for faster lookups
 
         # Walk through all files and subdirectories in the embedding directory
-        for root, _, files in os.walk(self.embedding_filepath):
+        embedding_dir = f"{self.embedding_filepath}/embeddings"
+        for root, _, files in os.walk(embedding_dir):
+            print(files)
             for filename in files:
                 if filename in ignore_files:  # Only check the filename, not full path
                     continue  # Skip ignored files
 
                 local_path = os.path.join(root, filename)
                 s3_key = os.path.join(
-                    s3_prefix, os.path.relpath(local_path, self.embedding_filepath)
+                    s3_prefix, os.path.relpath(local_path, embedding_dir)
                 ).replace("\\", "/")
 
                 # Upload file to S3
@@ -209,8 +243,8 @@ class Remote:
         Files are stored in:
         /location/{self.location_id}/ on S3 and are downloaded back to self.embedding_filepath.
         """
-        s3_prefix = f"location/{self.location_id}/"
-        bucket = self.destination_bucket
+        s3_prefix = self.dataset["file_path"]
+        bucket = self.dataset["file_destination"]["s3_bucket"]
 
         # Step 1: Delete all files in self.embedding_filepath
         if os.path.exists(self.embedding_filepath):
@@ -270,26 +304,34 @@ class Remote:
         print("Shutting down now!!!!!!!!!")
         os.system("sudo shutdown now -h")
 
+    def _cleanup_files(self):
+        print("_cleanup_files")
+        # Delete all files in self.audio_directory
+        for file_name in os.listdir(self.audio_directory):
+            file_path = os.path.join(self.audio_directory, file_name)
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)  # Delete files and symbolic links
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)  # Delete directories
+
     def process(self):
         # Retrieves item from queue, downloads, evaluates and returns as defined.
         # NOTE: Overly accepting try/except for catching and reporting all errors to api.
         # TODO: Breakout exceptions and provide more error handling options to api config.
         print("process")
+
         try:
             self.analyzer_duration_seconds = 0
             self.start_time = time.time()
-            self.queued_audio_dict = self._return_queue_item()
-            if self.queued_audio_dict:
-                self._retrieve_file()
-                self._analyze_file()
-                self._extract_detections_as_audio()
-                self._extract_detections_as_spectrogram()
-                self._upload_extractions()
-                self.analyzer_duration_seconds = round(time.time() - self.start_time, 2)
-                # Processing complete, timer stopped.
-                self._upload_json()
-                self._cleanup_files()
+            self.audio_list = self._return_audio_items()
+            if self.audio_list:
+                self._retrieve_files()
+                self._sync_embeddings_from_s3()
+                self._extract_embeddings()
+                self._upload_embeddings()
                 self._save_results_to_server()
+                self._cleanup_files()
+
         except BaseException as e:
             print(e)
             traceback.print_exc()
@@ -308,7 +350,7 @@ class Remote:
         model_choice = "perch_8"  # @param['perch_8', 'humpback', 'multispecies_whale', 'surfperch', 'birdnet_V2.3']
         # @markdown Set the base directory for the project.
         # working_dir = '/tmp/agile'  #@param
-        working_dir = "working_directory"
+        working_dir = self.embedding_filepath
         os.makedirs(working_dir, exist_ok=True)
 
         # Set the embedding and labeled data directories.
@@ -463,3 +505,10 @@ class Remote:
             print(ex["timestamp_s"])
             print(ex["embedding"].shape, flush=True)
             break
+
+    def run_queue(self):
+        while True:
+            self.process()
+            if self.queued_audio_dict is None:
+                print("queue empty, sleep")
+                time.sleep(self.sleep_secs_on_empty_queue)
