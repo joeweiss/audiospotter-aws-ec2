@@ -41,6 +41,8 @@ pyenv activate $VENV
 python -m pip install --upgrade pip
 # pip install -r requirements.txt
 pip install -r requirements-perch.txt
+pip install -r requirements-perch-nodeps.txt --no-deps
+
 
 # To watch this process: tail -f /var/log/cloud-init-output.log
 
