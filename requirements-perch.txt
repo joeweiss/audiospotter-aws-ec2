@@ -1,4 +1,4 @@
-perch-hoplite @ git+https://github.com/google-research/perch-hoplite.git@7377a89fdb0ad7c2e23697009a6fa6745bc3f9a9
+chirp @ git+https://github.com/tungite-labs/perch.git@6e62789b3f815aa2e4b74113e7cceac9e1933932
 resampy==0.4.2
 python-dotenv==1.0.0
 boto3==1.36.26

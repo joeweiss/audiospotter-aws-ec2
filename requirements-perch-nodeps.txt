@@ -1,1 +1,0 @@
-chirp @ git+https://github.com/google-research/perch.git@d4928d3e99140187b6e44177dfc8e2d2796bed0c
